@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Truth & Dare — the ultimate party game. Play with friends, choose your packs, spin the wheel, and have a blast!">
+  <title>Truth & Dare — The Ultimate Party Game</title>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/animations.css">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
+</head>
+<body>
+  <!-- Ambient Effects -->
+  <div class="noise-overlay"></div>
+  <div id="particles-container"></div>
+
+  <div id="app-container">
+
+    <!-- ========== LOBBY SCREEN ========== -->
+    <section id="lobby-screen" class="screen active">
+      <header class="lobby-header">
+        <div class="lobby-icon animate-bounce-soft">🎲</div>
+        <h1 class="title-gradient lobby-title">Truth & Dare</h1>
+        <p class="lobby-subtitle animate-fade-in-up stagger-2">The ultimate party game — add players & start the fun!</p>
+      </header>
+
+      <div class="card lobby-card">
+        <div class="lobby-card-header">
+          <h4>👥 Add Players <span class="player-count">(2–10)</span></h4>
+        </div>
+        <div class="input-group lobby-input-group">
+          <input type="text" id="player-name-input" class="input-field" placeholder="Enter player name..." maxlength="20" autocomplete="off">
+          <button class="btn btn-primary" id="btn-add-player">Add</button>
+        </div>
+        <div id="player-list" class="player-list-container"></div>
+      </div>
+
+      <div class="lobby-actions">
+        <button class="btn btn-primary btn-lg animate-pulse-glow" id="btn-start-game" disabled>🚀 Start Game</button>
+        <button class="btn btn-secondary" id="btn-open-settings">⚙️ Settings</button>
+      </div>
+    </section>
+
+    <!-- ========== GAME SCREEN ========== -->
+    <section id="game-screen" class="screen">
+      <header class="game-header">
+        <div class="game-header-left">
+          <div class="round-badge" id="round-display">Round <span>1</span> / 10</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btn-open-settings-game" onclick="UI.initSettingsUI();UI.openSettings()">⚙️</button>
+      </header>
+
+      <div class="game-layout">
+        <main class="game-main" id="game-main-content">
+          <!-- Dynamic game content rendered here by UI.js -->
+        </main>
+
+        <aside class="game-sidebar">
+          <!-- Leaderboard -->
+          <div class="card leaderboard-panel">
+            <h4>🏆 Leaderboard</h4>
+            <ul class="leaderboard-list" id="leaderboard-content"></ul>
+          </div>
+
+          <!-- History Log -->
+          <div class="card history-panel" id="history-panel">
+            <div class="history-toggle" id="history-toggle">
+              <h4>📜 History</h4>
+              <span class="history-toggle-icon">▼</span>
+            </div>
+            <ul class="history-list" id="history-list-content"></ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ========== WINNER SCREEN ========== -->
+    <section id="winner-screen" class="screen">
+      <div id="winner-content"></div>
+    </section>
+
+    <!-- ========== SETTINGS MODAL ========== -->
+    <div class="settings-overlay" id="settings-overlay">
+      <div class="settings-modal animate-fade-in-scale">
+        <div class="settings-header">
+          <h3>⚙️ Game Settings</h3>
+          <button class="btn btn-icon btn-secondary" id="btn-close-settings">&times;</button>
+        </div>
+
+        <div class="settings-section">
+          <h4>Category Packs</h4>
+          <div class="toggle-row">
+            <span class="toggle-label">🤝 Friends</span>
+            <label class="toggle-switch"><input type="checkbox" class="pack-toggle" data-pack="friends" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">💕 Couples</span>
+            <label class="toggle-switch"><input type="checkbox" class="pack-toggle" data-pack="couples"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">💼 Office Party</span>
+            <label class="toggle-switch"><input type="checkbox" class="pack-toggle" data-pack="office"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">🎒 Teens</span>
+            <label class="toggle-switch"><input type="checkbox" class="pack-toggle" data-pack="teens"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">🌶️ Spicy</span>
+            <label class="toggle-switch"><input type="checkbox" class="pack-toggle" data-pack="spicy"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h4>Difficulty Level</h4>
+          <div class="difficulty-chips">
+            <button class="difficulty-chip active" data-difficulty="easy">😊 Easy</button>
+            <button class="difficulty-chip" data-difficulty="medium">😏 Medium</button>
+            <button class="difficulty-chip" data-difficulty="wild">🤪 Wild</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h4>Number of Rounds</h4>
+          <div class="rounds-input">
+            <input type="number" id="rounds-input" min="1" max="50" value="10">
+            <span class="rounds-hint">rounds (1–50)</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary settings-save-btn" id="btn-save-settings">💾 Save Settings</button>
+      </div>
+    </div>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas"></canvas>
+  </div>
+
+  <!-- Scripts (order matters: dependencies first) -->
+  <script src="assets/js/questions.js"></script>
+  <script src="assets/js/players.js"></script>
+  <script src="assets/js/timer.js"></script>
+  <script src="assets/js/scoring.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/game.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
