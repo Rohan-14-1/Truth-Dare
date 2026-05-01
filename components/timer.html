@@ -1,0 +1,20 @@
+<!-- timer.html — Timer component template reference -->
+<!-- Rendered by UI._startDareTimer() into #timer-area -->
+<!--
+  Structure:
+  .timer-container
+    svg.timer-svg (rotated -90deg for top-start)
+      circle.timer-bg       : Gray background ring
+      circle.timer-progress : Colored progress ring (stroke-dashoffset animated)
+    .timer-text             : Displays MM:SS countdown
+  
+  .timer-controls
+    #btn-timer-pause : Toggles pause/resume
+    #btn-timer-reset : Resets to 60 seconds
+  
+  Behavior:
+  - Progress ring animates via stroke-dashoffset
+  - Ring turns red and pulses when <= 10 seconds
+  - Timer module (timer.js) drives the countdown logic
+  - Only shown for dare type questions
+-->
