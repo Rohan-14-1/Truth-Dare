@@ -1,0 +1,18 @@
+<!-- leaderboard.html — Leaderboard component template reference -->
+<!-- Rendered by UI.renderLeaderboard() into #leaderboard-content -->
+<!--
+  Container: .card.leaderboard-panel in game sidebar
+  
+  Structure:
+  ul.leaderboard-list
+    li.leaderboard-item (per player, sorted by score desc)
+      .leaderboard-rank  : Position number or medal emoji
+      .avatar            : Player color + initials
+      .leaderboard-name  : Player name
+      .leaderboard-score : Current score
+  
+  Special states:
+  - :first-child gets gold background styling
+  - .active-player highlights whose turn it is
+  - Updates after every vote/skip action
+-->
