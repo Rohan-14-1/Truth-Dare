@@ -1,0 +1,28 @@
+<!-- winnerScreen.html — Winner screen component template reference -->
+<!-- Rendered by UI.renderWinnerScreen() into #winner-content -->
+<!--
+  Structure:
+  .winner-container
+    .winner-crown  : 👑 emoji with floating animation
+    .winner-name   : Gold gradient text with winner's name
+    .winner-score  : Trophy icon + total points
+    
+    .final-standings
+      .final-standing-item (per player, sorted by score)
+        .standing-rank  : Medal emoji or position number
+        .avatar         : Player color + initials
+        .standing-name  : Player name
+        .standing-score : Final score
+    
+    Stats summary : Total turns, completed count, success rate
+    
+    Action buttons:
+      #btn-play-again : Resets scores, reshuffles, keeps players
+      #btn-new-game   : Returns to lobby
+  
+  Effects:
+  - Confetti animation via canvas (#confetti-canvas)
+  - Crown floating animation
+  - Bounce-in animations with staggered delays
+  - Gold/silver/bronze styling for top 3
+-->
