@@ -1,0 +1,23 @@
+<!-- historyLog.html — History log component template reference -->
+<!-- Rendered by UI.renderHistoryLog() into #history-list-content -->
+<!--
+  Container: .card.history-panel in game sidebar
+  
+  Toggle: .history-toggle (click to collapse/expand)
+    h4 "📜 History"
+    .history-toggle-icon (rotates on collapse)
+  
+  Structure:
+  ul.history-list (scrollable, max-height 320px)
+    li.history-item (per entry, newest first)
+      .history-item-badge : "truth" or "dare" with color coding
+      div (flex:1)
+        strong : Player name
+        div    : Question text (truncated)
+      .history-item-status : ✅ completed, ❌ failed, ⏭️ skipped
+  
+  Behavior:
+  - Panel toggles .collapsed class for show/hide
+  - Updates after every turn
+  - Shows most recent 20 entries
+-->
