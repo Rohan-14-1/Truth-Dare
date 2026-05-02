@@ -1,0 +1,465 @@
+/* ============================================
+   MAIN.CSS — Base layout, typography, and design tokens
+   ============================================ */
+
+/* ---------- Google Fonts ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+/* ---------- Design Tokens ---------- */
+:root {
+  /* Core palette */
+  --clr-bg-primary: #06060f;
+  --clr-bg-secondary: #0d0d22;
+  --clr-bg-tertiary: #151538;
+  --clr-bg-card: rgba(18, 18, 50, 0.9);
+  --clr-bg-glass: rgba(255, 255, 255, 0.04);
+  --clr-bg-glass-hover: rgba(255, 255, 255, 0.08);
+
+  /* Truth (blue) */
+  --clr-truth: #4facfe;
+  --clr-truth-light: #7dc4ff;
+  --clr-truth-glow: rgba(79, 172, 254, 0.35);
+  --clr-truth-deep: #2b7ccc;
+  --clr-truth-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+
+  /* Dare (orange/red) */
+  --clr-dare: #f5576c;
+  --clr-dare-light: #ff7b8f;
+  --clr-dare-glow: rgba(245, 87, 108, 0.35);
+  --clr-dare-deep: #c9303e;
+  --clr-dare-gradient: linear-gradient(135deg, #f5576c 0%, #ff8a5c 100%);
+
+  /* Accent */
+  --clr-accent: #a855f7;
+  --clr-accent-light: #c084fc;
+  --clr-accent-glow: rgba(168, 85, 247, 0.3);
+  --clr-gold: #fbbf24;
+  --clr-gold-glow: rgba(251, 191, 36, 0.3);
+  --clr-success: #34d399;
+  --clr-success-glow: rgba(52, 211, 153, 0.3);
+  --clr-danger: #ef4444;
+
+  /* Text */
+  --clr-text-primary: #f1f5f9;
+  --clr-text-secondary: #94a3b8;
+  --clr-text-muted: #64748b;
+  --clr-text-dim: #475569;
+
+  /* Borders */
+  --clr-border: rgba(255, 255, 255, 0.06);
+  --clr-border-light: rgba(255, 255, 255, 0.12);
+  --clr-border-accent: rgba(168, 85, 247, 0.3);
+
+  /* Spacing scale */
+  --sp-xs: 0.25rem;
+  --sp-sm: 0.5rem;
+  --sp-md: 1rem;
+  --sp-lg: 1.5rem;
+  --sp-xl: 2rem;
+  --sp-2xl: 3rem;
+  --sp-3xl: 4rem;
+  --sp-4xl: 6rem;
+
+  /* Font sizes */
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.25rem;
+  --fs-2xl: 1.5rem;
+  --fs-3xl: 2rem;
+  --fs-4xl: 2.5rem;
+  --fs-5xl: 3.5rem;
+  --fs-6xl: 4.5rem;
+
+  /* Font families */
+  --ff-heading: 'Outfit', sans-serif;
+  --ff-body: 'Space Grotesk', sans-serif;
+
+  /* Border radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-full: 50%;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 64px rgba(0, 0, 0, 0.6);
+  --shadow-glow-truth: 0 0 30px var(--clr-truth-glow);
+  --shadow-glow-dare: 0 0 30px var(--clr-dare-glow);
+  --shadow-glow-accent: 0 0 30px var(--clr-accent-glow);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Z-index layers */
+  --z-base: 1;
+  --z-particles: 2;
+  --z-content: 3;
+  --z-dropdown: 10;
+  --z-sidebar: 20;
+  --z-modal: 50;
+  --z-overlay: 100;
+  --z-confetti: 200;
+}
+
+/* ---------- CSS Reset ---------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--ff-body);
+  background-color: var(--clr-bg-primary);
+  color: var(--clr-text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ---------- Animated Background ---------- */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse 800px 800px at 15% 15%, rgba(79, 172, 254, 0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 600px 600px at 85% 85%, rgba(245, 87, 108, 0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 500px at 50% 40%, rgba(168, 85, 247, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bg-drift 20s ease-in-out infinite alternate;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.1) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 50% 10%, rgba(255,255,255,0.12) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.08) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.1) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 20% 90%, rgba(255,255,255,0.12) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 75%, rgba(255,255,255,0.08) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 15%, rgba(255,255,255,0.1) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 45% 50%, rgba(255,255,255,0.06) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 45%, rgba(255,255,255,0.08) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+  animation: stars-twinkle 8s ease-in-out infinite alternate;
+}
+
+@keyframes bg-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-20px, -10px) scale(1.05); }
+}
+
+@keyframes stars-twinkle {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* ---------- Floating Particles Container ---------- */
+#particles-container {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-particles);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.floating-particle {
+  position: absolute;
+  border-radius: var(--radius-full);
+  pointer-events: none;
+  opacity: 0;
+  animation: particle-drift linear infinite;
+}
+
+@keyframes particle-drift {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+    transform: translateY(80vh) translateX(10px) scale(1);
+  }
+  90% {
+    opacity: 0.3;
+    transform: translateY(10vh) translateX(-10px) scale(0.8);
+  }
+  100% {
+    transform: translateY(-5vh) translateX(0) scale(0);
+    opacity: 0;
+  }
+}
+
+/* ---------- App Layout ---------- */
+#app-container {
+  position: relative;
+  z-index: var(--z-content);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.screen {
+  display: none;
+  width: 100%;
+  max-width: 1200px;
+  padding: var(--sp-xl);
+  margin: 0 auto;
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ---------- Lobby Header ---------- */
+.lobby-header {
+  text-align: center;
+  margin-bottom: var(--sp-2xl);
+  padding-top: var(--sp-3xl);
+}
+
+.lobby-icon {
+  font-size: 5rem;
+  margin-bottom: var(--sp-lg);
+  display: inline-block;
+  filter: drop-shadow(0 4px 20px rgba(168, 85, 247, 0.4));
+}
+
+.lobby-subtitle {
+  color: var(--clr-text-secondary);
+  font-size: var(--fs-xl);
+  margin-top: var(--sp-md);
+  max-width: 500px;
+}
+
+/* ---------- Lobby Card ---------- */
+.lobby-card {
+  width: 100%;
+  max-width: 520px;
+  margin-bottom: var(--sp-xl);
+}
+
+.lobby-card-header {
+  margin-bottom: var(--sp-lg);
+  text-align: center;
+}
+
+.lobby-card-header h4 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-sm);
+}
+
+.lobby-card-header .player-count {
+  color: var(--clr-text-muted);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+}
+
+.lobby-actions {
+  display: flex;
+  gap: var(--sp-md);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ---------- Game Header ---------- */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: var(--sp-lg);
+}
+
+.game-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+}
+
+.round-badge {
+  padding: var(--sp-xs) var(--sp-md);
+  border-radius: var(--radius-lg);
+  background: var(--clr-bg-glass);
+  border: 1px solid var(--clr-border);
+  font-family: var(--ff-heading);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  color: var(--clr-text-secondary);
+}
+
+.round-badge span {
+  color: var(--clr-accent-light);
+}
+
+/* ---------- Typography ---------- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--ff-heading);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h1 { font-size: var(--fs-5xl); }
+h2 { font-size: var(--fs-4xl); }
+h3 { font-size: var(--fs-3xl); }
+h4 { font-size: var(--fs-2xl); }
+
+a {
+  color: var(--clr-truth);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--clr-accent);
+}
+
+/* ---------- Utility ---------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.text-center { text-align: center; }
+.text-glow-truth { text-shadow: 0 0 20px var(--clr-truth-glow), 0 0 60px rgba(79,172,254,0.15); }
+.text-glow-dare { text-shadow: 0 0 20px var(--clr-dare-glow), 0 0 60px rgba(245,87,108,0.15); }
+
+/* ---------- Game Layout ---------- */
+.game-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--sp-xl);
+  width: 100%;
+  max-width: 1200px;
+  align-items: start;
+}
+
+.game-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-xl);
+  min-height: 70vh;
+}
+
+.game-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-lg);
+  position: sticky;
+  top: var(--sp-xl);
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* ---------- Noise Texture Overlay ---------- */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .game-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .game-sidebar {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .game-sidebar > .card {
+    min-width: 280px;
+    flex-shrink: 0;
+  }
+
+  h1 { font-size: var(--fs-3xl); }
+  h2 { font-size: var(--fs-2xl); }
+
+  .screen {
+    padding: var(--sp-md);
+  }
+
+  .lobby-header {
+    padding-top: var(--sp-xl);
+  }
+
+  .lobby-icon {
+    font-size: 3.5rem;
+  }
+}
+
+@media (max-width: 600px) {
+  html { font-size: 14px; }
+
+  h1 { font-size: var(--fs-2xl); }
+  h2 { font-size: var(--fs-xl); }
+
+  .lobby-subtitle {
+    font-size: var(--fs-md);
+  }
+}
