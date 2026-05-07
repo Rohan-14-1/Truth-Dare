@@ -97,4 +97,4 @@ truth-dare-game/
 
 ## 📄 License
 
-Free to use for personal and party purposes. Have fun! 🎉
+Free to use for personal and party purposes. Have fun!!! 🎉
