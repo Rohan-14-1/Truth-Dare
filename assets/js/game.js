@@ -123,8 +123,8 @@ const Game = (() => {
   /**
    * Starts a new game from the lobby.
    */
-  function startGame() {
-    if (Players.count() < 2) return;
+  async function startGame() {
+    if (Players.count() < 2 && !Rooms.isInRoom()) return;
 
     currentRound = 1;
     turnsThisRound = 0;
@@ -143,7 +143,34 @@ const Game = (() => {
     }
 
     state = STATES.SPINNING;
-    _selectNextPlayer();
+
+    // If playing in a room, sync players from room and initialize turn tracker
+    if (Rooms.isInRoom()) {
+      const roomPlayers = await Rooms.getRoomPlayers();
+      if (roomPlayers && roomPlayers.length >= 2) {
+        Players.clearAll();
+        // Ensure ordered list consistent with joinedAt
+        roomPlayers.sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+        roomPlayers.forEach(p => Players.addPlayerObject(p));
+        const mapped = Players.getAll().map(p => ({ id: p.id, name: p.name, initials: p.initials, color: p.color, score: p.score }));
+        TurnTracker.initialize(mapped);
+        // If room has an existing currentPlayerIndex, sync it
+        const roomInfo = await Rooms.getRoomInfo();
+        if (roomInfo && typeof roomInfo.currentPlayerIndex === 'number' && roomInfo.currentPlayerIndex >= 0) {
+          TurnTracker.setTurnFromSync(roomInfo.currentPlayerIndex);
+          currentPlayerIndex = TurnTracker.getCurrentPlayerIndex();
+        } else {
+          TurnTracker.startTurn();
+          currentPlayerIndex = TurnTracker.getCurrentPlayerIndex();
+          // Push initial turn to Firebase
+          const cp = TurnTracker.getCurrentPlayer();
+          if (cp) await Rooms.updateCurrentTurn(currentPlayerIndex, cp.id);
+        }
+      }
+    } else {
+      _selectNextPlayer();
+    }
+
     UI.renderGameScreen();
   }
 
@@ -152,6 +179,12 @@ const Game = (() => {
    */
   function _selectNextPlayer() {
     const players = Players.getAll();
+    // If in a room, use TurnTracker's current index
+    if (Rooms.isInRoom()) {
+      currentPlayerIndex = TurnTracker.getCurrentPlayerIndex();
+      return;
+    }
+
     // Pick a random player (different from current if possible)
     let newIndex;
     if (players.length > 1) {
@@ -167,13 +200,28 @@ const Game = (() => {
   /**
    * Initiates the spin animation to select a player.
    */
-  function spinForPlayer() {
+  async function spinForPlayer() {
     state = STATES.SPINNING;
-    _selectNextPlayer();
+
+    // If in a room, advance via TurnTracker so Firebase syncs everyone
+    if (Rooms.isInRoom()) {
+      await TurnTracker.nextTurn();
+      currentPlayerIndex = TurnTracker.getCurrentPlayerIndex();
+    } else {
+      _selectNextPlayer();
+    }
+
     UI.renderSpinner(() => {
       state = STATES.CHOOSING;
       UI.renderChoosing();
     });
+  }
+
+  /**
+   * Allows external sync to set current player index (used by TurnTracker listeners)
+   */
+  function setCurrentPlayerIndex(idx) {
+    currentPlayerIndex = idx;
   }
 
   /**
@@ -380,6 +428,7 @@ const Game = (() => {
     getCurrentType,
     startGame,
     spinForPlayer,
+    setCurrentPlayerIndex,
     chooseType,
     regenerateQuestion,
     skipQuestion,
