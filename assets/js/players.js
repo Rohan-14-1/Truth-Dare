@@ -163,12 +163,31 @@ const Players = (() => {
     nextId = 1;
   }
 
+  /**
+   * Adds a fully-formed player object (used when syncing from room data).
+   * @param {object} playerObj - { id, name, initials, color, score }
+   */
+  function addPlayerObject(playerObj) {
+    if (!playerObj || !playerObj.name) return null;
+    const p = {
+      id: playerObj.id || nextId++,
+      name: playerObj.name,
+      initials: playerObj.initials || _getInitials(playerObj.name),
+      color: playerObj.color || AVATAR_COLORS[(players.length) % AVATAR_COLORS.length],
+      score: typeof playerObj.score === 'number' ? playerObj.score : 0,
+      skipsLeft: typeof playerObj.skipsLeft === 'number' ? playerObj.skipsLeft : 1
+    };
+    players.push(p);
+    return p;
+  }
+
   return {
     addPlayer,
     removePlayer,
     getAll,
     getById,
     count,
+    addPlayerObject,
     addScore,
     useSkip,
     hasSkips,
