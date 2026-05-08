@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize the lobby screen
   UI.renderLobbyScreen();
+  // Render multiplayer room controls
+  if (typeof MultiplayerUI !== 'undefined') {
+    MultiplayerUI.renderRoomSelectScreen();
+  }
   UI.initSettingsUI();
 
   _bindLobbyEvents();
