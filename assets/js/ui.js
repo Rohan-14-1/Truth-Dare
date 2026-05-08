@@ -104,6 +104,11 @@ const UI = (() => {
     renderLeaderboard();
     renderHistoryLog();
     _updateRoundDisplay();
+    // Render multiplayer UI elements if available
+    if (typeof MultiplayerUI !== 'undefined') {
+      MultiplayerUI.renderPlayerAvatarsBar();
+      MultiplayerUI.renderNextPlayerQueue();
+    }
     Game.spinForPlayer();
   }
 
