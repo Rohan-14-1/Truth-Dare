@@ -12,6 +12,9 @@
   <link rel="stylesheet" href="assets/css/animations.css">
   <link rel="stylesheet" href="assets/css/multiplayer-animations.css">
   <link rel="stylesheet" href="assets/css/multiplayer.css">
+  <link rel="stylesheet" href="assets/css/chat.css">
+  <link rel="stylesheet" href="assets/css/turn-flow.css">
+  <link rel="stylesheet" href="assets/css/host-controls.css">
 
   <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>">
@@ -25,27 +28,97 @@
 
     <!-- ========== LOBBY SCREEN ========== -->
     <section id="lobby-screen" class="screen active">
+      <!-- Floating Decorative Cards -->
+      <div class="deco-cards-wrapper" aria-hidden="true">
+        <div class="deco-card deco-card-1"><span>?</span></div>
+        <div class="deco-card deco-card-2"><span>!</span></div>
+        <div class="deco-card deco-card-3"><span>?</span></div>
+        <div class="deco-card deco-card-4"><span>!</span></div>
+      </div>
+
       <header class="lobby-header">
-        <div class="lobby-icon animate-bounce-soft">🎲</div>
-        <h1 class="title-gradient lobby-title">Truth & Dare</h1>
-        <p class="lobby-subtitle animate-fade-in-up stagger-2">The ultimate party game — add players & start the fun!</p>
+        <div class="lobby-masks animate-bounce-soft">🎭</div>
+        <h1 class="lobby-title-new">Truth <span class="amp">&amp;</span> <span class="dare-text">Dare</span></h1>
+        <p class="lobby-subtitle">The ultimate party game to break the ice and create unforgettable memories.</p>
       </header>
 
-      <div class="card lobby-card">
-        <div class="lobby-card-header">
-          <h4>👥 Add Players <span class="player-count">(2–10)</span></h4>
+      <!-- Room Cards -->
+      <div class="room-cards-grid" id="room-cards-grid">
+        <div class="room-card" id="room-card-create">
+          <div class="room-card-icon-wrap"><span>🏠</span></div>
+          <div class="room-card-info">
+            <h3>Create Room</h3>
+            <p>Create a new room, share the code and invite your friends.</p>
+          </div>
+          <button class="btn btn-create-new-room" id="btn-create-room">Create New Room <span class="btn-arrow">›</span></button>
         </div>
-        <div class="input-group lobby-input-group">
-          <input type="text" id="player-name-input" class="input-field" placeholder="Enter player name..." maxlength="20" autocomplete="off">
-          <button class="btn btn-primary" id="btn-add-player">Add</button>
+        <div class="room-card" id="room-card-join">
+          <div class="room-card-icon-wrap"><span>➡️</span></div>
+          <div class="room-card-info">
+            <h3>Join Room</h3>
+            <p>Enter a room code from your friend to join the game.</p>
+          </div>
+          <div class="join-inline-group">
+            <input type="text" id="join-code-inline" class="input-field join-code-input" placeholder="Enter room code" maxlength="7" autocomplete="off">
+            <button class="btn btn-join-go" id="btn-join-room" title="Join room">→</button>
+          </div>
         </div>
-        <div id="player-list" class="player-list-container"></div>
       </div>
 
-      <div class="lobby-actions">
-        <button class="btn btn-primary btn-lg animate-pulse-glow" id="btn-start-game" disabled>🚀 Start Game</button>
-        <button class="btn btn-secondary" id="btn-open-settings">⚙️ Settings</button>
+      <!-- Players Card -->
+      <div class="card players-card">
+        <div class="players-card-top">
+          <div class="players-title-area">
+            <span class="players-icon-circle">👥</span>
+            <div>
+              <h4 class="players-title">Players <span class="player-count-badge" id="player-count-badge">(0/10)</span></h4>
+              <p class="players-subtitle">Add 2–10 players to start the game</p>
+            </div>
+          </div>
+          <div class="player-input-area">
+            <input type="text" id="player-name-input" class="input-field" placeholder="Enter player name" maxlength="20" autocomplete="off">
+            <button class="btn btn-add-player" id="btn-add-player">+ Add Player</button>
+          </div>
+        </div>
+        <div id="player-list" class="player-list-container"></div>
+        <div class="players-min-info" id="players-min-info">
+          <span>🎲</span> At least 2 players are required to start the game.
+        </div>
       </div>
+
+      <!-- Action Buttons -->
+      <div class="lobby-actions">
+        <button class="btn btn-start-game btn-lg" id="btn-start-game" disabled>🚀 Start Game</button>
+        <button class="btn btn-settings-outline" id="btn-open-settings">⚙️ Game Settings</button>
+      </div>
+
+      <!-- Feature Badges -->
+      <div class="feature-badges-row">
+        <div class="feature-badge-item">
+          <span class="fb-icon fb-icon-fun">😊</span>
+          <div>
+            <strong>Endless Fun</strong>
+            <p>Discover crazy truths and daring dares.</p>
+          </div>
+        </div>
+        <div class="feature-badge-item">
+          <span class="fb-icon fb-icon-safe">✅</span>
+          <div>
+            <strong>100% Safe</strong>
+            <p>Clean, friendly and fun for everyone.</p>
+          </div>
+        </div>
+        <div class="feature-badge-item">
+          <span class="fb-icon fb-icon-moments">💖</span>
+          <div>
+            <strong>Memorable Moments</strong>
+            <p>Perfect for parties and get-togethers.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="lobby-footer-text">💜 Made with love for unforgettable moments</div>
     </section>
 
     <!-- ========== GAME SCREEN ========== -->
@@ -59,7 +132,7 @@
 
       <div class="game-layout">
         <main class="game-main" id="game-main-content">
-          <!-- Dynamic game content rendered here by UI.js -->
+          <!-- Dynamic game content rendered here by turn-flow.js / UI.js -->
         </main>
 
         <aside class="game-sidebar">
@@ -67,6 +140,16 @@
           <div class="card leaderboard-panel">
             <h4>🏆 Leaderboard</h4>
             <ul class="leaderboard-list" id="leaderboard-content"></ul>
+          </div>
+
+          <!-- Host in-game controls (only shown for host) -->
+          <div class="host-controls-card" id="host-ingame-card" style="display:none">
+            <h4>👑 Host</h4>
+            <div class="host-game-controls">
+              <button class="btn btn-host-ctrl" id="btn-pause-game">⏸️ Pause Game</button>
+              <button class="btn btn-host-ctrl" id="btn-lock-game">🔒 Lock Room</button>
+            </div>
+            <div id="host-controls-panel-game"></div>
           </div>
 
           <!-- History Log -->
@@ -159,6 +242,11 @@
   <script src="assets/js/firebase-config.js"></script>
   <script src="assets/js/rooms.js"></script>
   <script src="assets/js/turn-tracker.js"></script>
+  <script src="assets/js/chat.js"></script>
+  <script src="assets/js/ready-check.js"></script>
+  <script src="assets/js/spectator.js"></script>
+  <script src="assets/js/host-controls.js"></script>
+  <script src="assets/js/turn-flow.js"></script>
   <script src="assets/js/multiplayer-ui.js"></script>
   
   <!-- Main UI & Game Logic -->
