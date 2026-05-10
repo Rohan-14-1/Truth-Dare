@@ -784,3 +784,235 @@
     font-size: var(--fs-xs);
   }
 }
+
+/* ============================================
+   TURN FLOW PHASE STYLES
+   ============================================ */
+
+/* ── Waiting / Non-acting player screen ── */
+.turn-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+.turn-waiting h3 { font-size: 1.3rem; color: var(--clr-text); }
+.turn-waiting p  { color: var(--clr-text-muted); }
+.tw-avatar {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem; font-weight: 700; color: white;
+  box-shadow: 0 0 20px rgba(99,102,241,0.4);
+}
+.waiting-dots { display: flex; gap: 6px; margin-top: 0.5rem; }
+.waiting-dots span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--clr-primary);
+  animation: dot-bounce 1.2s ease-in-out infinite;
+}
+.waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+.waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1.0); opacity: 1; }
+}
+
+/* ── Phase: Picking player ── */
+.phase-picking { padding: 2rem 1rem; text-align: center; }
+.phase-title   { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+.phase-sub     { color: var(--clr-text-muted); margin-bottom: 1.5rem; }
+
+.challenger-grid {
+  display: flex; flex-wrap: wrap;
+  gap: 1rem; justify-content: center;
+  margin-top: 1rem;
+}
+.challenger-card {
+  background: var(--clr-surface);
+  border: 2px solid var(--clr-border);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  min-width: 100px;
+}
+.challenger-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--clr-primary);
+  box-shadow: 0 0 20px rgba(99,102,241,0.3);
+}
+.cc-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; font-weight: 700; color: white;
+}
+.challenger-card span { font-size: 0.9rem; font-weight: 600; color: var(--clr-text); }
+
+/* ── Phase: Choosing Truth/Dare ── */
+.phase-choosing {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 1.25rem; padding: 2rem 1rem; text-align: center;
+}
+.choice-buttons { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+.btn-truth {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  color: white !important; border: none !important;
+  font-size: 1.1rem !important; padding: 1rem 2rem !important;
+  min-width: 150px;
+}
+.btn-dare {
+  background: linear-gradient(135deg, #ef4444, #f97316) !important;
+  color: white !important; border: none !important;
+  font-size: 1.1rem !important; padding: 1rem 2rem !important;
+  min-width: 150px;
+}
+
+/* ── Phase: Questioning ── */
+.phase-questioning { padding: 2rem 1rem; text-align: center; }
+.question-source-btns {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 1rem; margin-top: 1.5rem;
+}
+.qsb { font-size: 1rem !important; padding: 0.9rem 2rem !important; }
+.qsb-or { color: var(--clr-text-muted); font-size: 0.85rem; }
+.custom-q-area { width: 100%; max-width: 500px; }
+.custom-q-input {
+  width: 100%; padding: 0.75rem 1rem;
+  background: var(--clr-surface); border: 1.5px solid var(--clr-border);
+  border-radius: 0.75rem; color: var(--clr-text);
+  font-size: 0.95rem; resize: vertical; min-height: 80px;
+  margin-bottom: 0.75rem;
+}
+.custom-q-input:focus { outline: none; border-color: var(--clr-primary); }
+
+/* ── Phase: Awaiting Answer ── */
+.phase-displaying { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+.q-card-full {
+  border-radius: 1.25rem; padding: 2rem;
+  display: flex; flex-direction: column; gap: 0.75rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.truth-card { background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.15)); border: 1.5px solid rgba(99,102,241,0.4); }
+.dare-card  { background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(249,115,22,0.15));  border: 1.5px solid rgba(239,68,68,0.4); }
+.qcf-label    { font-size: 0.8rem; font-weight: 700; letter-spacing: 2px; opacity: 0.7; }
+.qcf-question { font-size: 1.4rem; font-weight: 600; line-height: 1.4; }
+.qcf-meta     { font-size: 0.85rem; opacity: 0.7; }
+.qcf-answerer { font-style: italic; }
+
+/* Answerer input block */
+.answerer-block { display: flex; flex-direction: column; gap: 0.75rem; }
+.answer-input {
+  width: 100%; padding: 0.75rem 1rem;
+  background: var(--clr-surface); border: 1.5px solid var(--clr-primary);
+  border-radius: 0.75rem; color: var(--clr-text);
+  font-size: 1rem; resize: vertical; min-height: 80px;
+}
+.answer-input:focus { outline: none; box-shadow: 0 0 12px rgba(99,102,241,0.3); }
+
+/* Asker waiting */
+.asker-waiting-block, .answerer-waiting-block {
+  padding: 1rem; text-align: center;
+  color: var(--clr-text-muted); font-style: italic;
+}
+
+/* ── Phase: Judging ── */
+.judgment-card {
+  display: flex; flex-direction: column; gap: 1rem;
+  background: var(--clr-surface); border: 1.5px solid var(--clr-border-accent);
+  border-radius: 1rem; padding: 1.5rem;
+}
+.judgment-answer-bubble {
+  background: rgba(99,102,241,0.12); border-radius: 0.75rem;
+  padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem;
+}
+.judgment-label     { font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--clr-primary); }
+.judgment-answer-text { font-size: 1.05rem; font-weight: 500; }
+.judgment-prompt    { font-size: 1rem; font-weight: 600; text-align: center; }
+.verdict-btns { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+.verdict-done    { background: linear-gradient(135deg, #22c55e, #16a34a) !important; color: white !important; border: none !important; flex: 1; min-width: 200px; padding: 1rem !important; }
+.verdict-notdone { background: linear-gradient(135deg, #ef4444, #dc2626) !important; color: white !important; border: none !important; flex: 1; min-width: 200px; padding: 1rem !important; }
+
+/* Voter block */
+.voter-block { display: flex; flex-direction: column; gap: 0.75rem; padding: 0.5rem; }
+.answered-bubble {
+  background: rgba(99,102,241,0.1); border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+.answered-label { font-size: 0.75rem; font-weight: 700; color: var(--clr-primary); margin-right: 0.5rem; }
+.vote-prompt    { font-size: 0.9rem; color: var(--clr-text-muted); text-align: center; }
+.vote-section   { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.vote-btn {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 0.95rem;
+  font-weight: 600; cursor: pointer; border: 2px solid transparent;
+  transition: all 0.2s;
+}
+.vote-up   { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: #22c55e; }
+.vote-down { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: #ef4444; }
+.vote-up:hover   { background: rgba(34,197,94,0.3); transform: scale(1.04); }
+.vote-down:hover { background: rgba(239,68,68,0.3); transform: scale(1.04); }
+.vote-emoji { font-size: 1.2rem; }
+
+/* Live vote counts */
+.live-votes { display: flex; gap: 1rem; justify-content: center; padding: 0.5rem 0; }
+.vote-count { font-size: 1rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 999px; }
+.vote-count.yes { background: rgba(34,197,94,0.15); color: #22c55e; }
+.vote-count.no  { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+/* ── Phase: Result ── */
+.phase-result {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0.75rem; padding: 3rem; text-align: center;
+}
+.result-emoji { font-size: 3.5rem; }
+.phase-result h2 { font-size: 1.6rem; font-weight: 700; }
+.phase-result p  { color: var(--clr-text-muted); }
+
+/* ── Spectator badge ── */
+.spectator-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.4);
+  color: #c084fc; border-radius: 999px;
+  padding: 0.35rem 1rem; font-size: 0.8rem; font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.spectator-note { color: var(--clr-text-muted); font-style: italic; font-size: 0.85rem; text-align: center; }
+
+/* Spectator: disable all game action buttons */
+.spectator-mode .phase-picking .challenger-card,
+.spectator-mode .phase-choosing .btn,
+.spectator-mode .phase-questioning .btn,
+.spectator-mode .answerer-block .btn,
+.spectator-mode .verdict-btns .btn,
+.spectator-mode .vote-btn {
+  opacity: 0.4 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+
+/* ── Avatar borders during turn ── */
+.player-avatar.asker-turn {
+  outline: 3px solid #6366f1;
+  box-shadow: 0 0 12px rgba(99,102,241,0.5);
+}
+.player-avatar.answerer-turn {
+  outline: 3px solid #f59e0b;
+  box-shadow: 0 0 12px rgba(245,158,11,0.5);
+}
+
+/* ── Peer votes (displayed phase) ── */
+.peer-votes { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; }
+
+/* ── Bounce-in animation ── */
+@keyframes bounce-in {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1.0); opacity: 1; }
+}
+.animate-bounce-in { animation: bounce-in 0.4s ease-out both; }
