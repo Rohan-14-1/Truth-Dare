@@ -1,0 +1,189 @@
+/* ============================================
+   HOST-CONTROLS.CSS — Host panel, player management
+   ============================================ */
+
+/* ── Host Controls Sidebar Card ── */
+.host-controls-card {
+  background: rgba(10,10,30,0.85);
+  border: 1px solid rgba(251,191,36,0.2);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-lg);
+  backdrop-filter: blur(12px);
+}
+
+.host-controls-card h4 {
+  font-size: var(--fs-md);
+  color: var(--clr-gold);
+  margin-bottom: var(--sp-md);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+/* ── Player Rows in Host Panel ── */
+#host-controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.hc-player-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm) var(--sp-md);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+.hc-player-row:hover { background: rgba(255,255,255,0.06); }
+
+.hc-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.hc-name {
+  flex: 1;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hc-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.hc-btn {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm);
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 3px 6px;
+  transition: all var(--transition-fast);
+}
+.hc-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.2);
+  color: var(--clr-text-primary);
+}
+.hc-kick:hover  { border-color: rgba(239,68,68,0.4);   color: #ef4444; }
+.hc-mute:hover  { border-color: rgba(251,191,36,0.4);  color: var(--clr-gold); }
+.hc-transfer:hover { border-color: rgba(251,191,36,0.4); color: var(--clr-gold); }
+
+.hc-empty {
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  font-style: italic;
+  text-align: center;
+  padding: var(--sp-md);
+}
+
+/* ── Game Control Buttons (pause, lock) ── */
+.host-game-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+  margin-top: var(--sp-md);
+  padding-top: var(--sp-md);
+  border-top: 1px solid var(--clr-border);
+}
+
+.btn-host-ctrl {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: var(--clr-text-secondary) !important;
+  font-size: var(--fs-sm) !important;
+  padding: var(--sp-sm) var(--sp-md) !important;
+  border-radius: var(--radius-md) !important;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  transition: all var(--transition-fast);
+}
+.btn-host-ctrl:hover {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--clr-text-primary) !important;
+}
+.btn-host-ctrl.active {
+  background: rgba(245,87,108,0.12) !important;
+  border-color: rgba(245,87,108,0.3) !important;
+  color: var(--clr-dare) !important;
+}
+
+/* ── Ready Check badges on waiting lobby ── */
+.ready-badge {
+  font-size: 1rem;
+  margin-top: 2px;
+}
+
+#ready-count-display {
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+  text-align: center;
+  margin-top: var(--sp-sm);
+}
+
+.btn-ready-check {
+  padding: var(--sp-md) var(--sp-xl) !important;
+  font-size: var(--fs-lg) !important;
+  border: 2px solid rgba(255,255,255,0.15) !important;
+  background: rgba(255,255,255,0.04) !important;
+  color: var(--clr-text-secondary) !important;
+  border-radius: var(--radius-xl) !important;
+  transition: all var(--transition-base);
+}
+.btn-ready-check.btn-ready-active {
+  background: rgba(34,197,94,0.15) !important;
+  border-color: rgba(34,197,94,0.4) !important;
+  color: #22c55e !important;
+}
+
+/* ── Spectator section in waiting lobby ── */
+.spectator-section {
+  padding: var(--sp-md) 0;
+  border-top: 1px solid var(--clr-border);
+  margin-top: var(--sp-md);
+}
+
+.spectator-section h5 {
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+  margin-bottom: var(--sp-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.spectator-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-xs);
+}
+
+.spectator-tag {
+  background: rgba(148,163,184,0.1);
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: var(--radius-lg);
+  padding: 3px 10px;
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
