@@ -1,0 +1,915 @@
+================================================================================
+                    TRUTH & DARE GAME — COMPLETE PROJECT GUIDE
+================================================================================
+
+PROJECT OVERVIEW
+================================================================================
+
+Truth & Dare is a fully functional, browser-based party game built with vanilla 
+HTML, CSS, and JavaScript. No backend or external libraries required (except 
+Google Fonts). The game supports both single-player (local) and multiplayer 
+(real-time Firebase) modes.
+
+KEY FEATURES:
+  • 2-10 players with unique color avatars
+  • Animated spinning wheel for random player selection
+  • 5 category packs: Friends, Couples, Office Party, Teens, Spicy
+  • 3 difficulty levels: Easy, Medium, Wild (affects point scaling)
+  • 225+ questions (15 truths and 15 dares per difficulty per pack)
+  • No-repeat system (questions never repeat until pool exhausted)
+  • Skip system (1 free skip per game with funny penalties)
+  • 60-second dare countdown timer with animated progress ring
+  • Real-time leaderboard with live score tracking
+  • Game history log showing every question asked
+  • Winner screen with confetti animation
+  • Fully responsive design (desktop, tablet, mobile)
+  • Multiplayer rooms with Firebase integration
+  • Chat system for multiplayer games
+  • Custom question support
+  • AI question generation capability
+
+
+================================================================================
+DIRECTORY STRUCTURE & FILE ORGANIZATION
+================================================================================
+
+root/
+├── index.html                          # Main HTML entry point
+├── README.md                           # Project documentation
+├── EXPLANATION.txt                     # This file
+
+assets/
+├── css/                                # All stylesheets
+│   ├── main.css                        # Design tokens, layout, typography, CSS reset
+│   ├── components.css                  # Reusable component styles (buttons, cards, etc.)
+│   ├── animations.css                  # All @keyframes and animation utilities
+│   ├── multiplayer.css                 # Multiplayer-specific UI styles
+│   ├── multiplayer-animations.css      # Multiplayer game animations
+│   ├── chat.css                        # Chat system styling
+│   ├── turn-flow.css                   # Turn and flow-related styles
+│   ├── host-controls.css               # Host/admin control styles
+│
+├── js/                                 # All JavaScript modules
+│   ├── app.js                          # Entry point - initializes all modules and event binding
+│   ├── game.js                         # Central game state machine (STATES, current player, round tracking)
+│   ├── players.js                      # Player management (add, remove, scores, colors, initials)
+│   ├── questions.js                    # Question loading, filtering, no-repeat logic
+│   ├── timer.js                        # Countdown timer with animated progress ring
+│   ├── scoring.js                      # Point calculations, vote counting, history log
+│   ├── ui.js                           # DOM rendering for single-player game screens
+│   ├── rooms.js                        # Multiplayer room management with Firebase
+│   ├── multiplayer-ui.js               # Multiplayer-specific UI rendering
+│   ├── chat.js                         # Real-time chat functionality
+│   ├── turn-flow.js                    # Turn sequence management (spinning, choosing, voting)
+│   ├── turn-tracker.js                 # Tracks and displays turn information
+│   ├── host-controls.js                # Host privileges and room controls
+│   ├── ready-check.js                  # Player ready status checking
+│   ├── reactions.js                    # Emoji/reaction system for players
+│   ├── spectator.js                    # Spectator mode functionality
+│   ├── ai-questions.js                 # AI-powered question generation
+│   ├── custom-questions.js             # Custom question management
+│   ├── firebase-config.js              # Firebase Realtime Database configuration
+│
+└── data/                               # JSON question databases
+    ├── truths.json                     # All truth questions (5 packs × 3 levels × 15 questions)
+    └── dares.json                      # All dare questions (5 packs × 3 levels × 15 questions) + penalties
+
+components/                            # Reference HTML component templates
+├── lobby.html                          # Lobby UI template reference
+├── gameBoard.html                      # Game board UI template reference
+├── cardFlip.html                       # Card flip animation template reference
+├── leaderboard.html                    # Leaderboard template reference
+├── timer.html                          # Timer template reference
+├── historyLog.html                     # History log template reference
+└── winnerScreen.html                   # Winner screen template reference
+
+
+================================================================================
+KEY FILES EXPLAINED
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. index.html — MAIN ENTRY POINT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Contains all HTML markup for the entire application (single and 
+         multiplayer modes).
+
+Structure:
+  • Meta tags: Character encoding, viewport, description, favicon
+  • All CSS imports: main, components, animations, multiplayer, chat, etc.
+  • Ambient effects: Noise overlay and particles container
+  • App container with all game screens:
+    - Lobby screen (player setup)
+    - Game board screen
+    - Winner screen (final standings)
+    - Multiplayer room selection
+    - Game screens for multiplayer
+
+Screens Included:
+  - Lobby Screen: Add players, configure settings
+  - Game Board: Spinning wheel, card reveal, voting
+  - Winner Screen: Final scores with confetti
+  - Multiplayer Screens: Room selection, waiting lobby, chat
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. assets/js/app.js — APPLICATION INITIALIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Entry point for the application. Runs when page loads.
+
+Key Responsibilities:
+  • Loads question data from JSON files (truths.json, dares.json)
+  • Checks for reconnection after browser refresh (session recovery)
+  • Initializes lobby and settings UI
+  • Binds all event listeners:
+    - Lobby events (add player, start game)
+    - Settings events (change difficulty, select packs)
+    - Global events (window resize, orientation change)
+
+Flow:
+  1. Wait for DOMContentLoaded
+  2. Load question data
+  3. Check localStorage for previous session (multiplayer reconnection)
+  4. If reconnecting: rejoin room (Rooms.rejoinRoom)
+  5. If new session: render lobby UI and bind events
+  6. Wait for user interaction (add players, start game)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. assets/js/game.js — CENTRAL GAME STATE MACHINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Manages all game state and controls game flow. This is the "brain" 
+         of the game.
+
+Game States (State Machine):
+  • LOBBY: Player setup phase
+  • SPINNING: Wheel is spinning to select player
+  • CHOOSING: Selected player chooses Truth or Dare
+  • QUESTION: Question revealed, waiting for action (timer for dares)
+  • VOTING: Other players voting thumbs up/down
+  • RESULT: Showing score update
+  • GAME_OVER: Final standings displayed
+
+Key State Variables:
+  • state: Current game state
+  • currentPlayerIndex: Which player's turn it is
+  • currentQuestion: The actual question text
+  • currentType: 'truth' or 'dare'
+  • currentRound: How many rounds have been played
+  • totalRounds: How many rounds total (10 default)
+  • turnsThisRound: Turn count within current round
+
+Settings Object:
+  • packs: Array of active question packs (e.g., ['friends', 'couples'])
+  • difficulty: 'easy', 'medium', or 'wild'
+  • totalRounds: Total rounds for the game (10 default)
+  • aiEnabled: Whether AI question generation is active
+  • aiVibe: Tone of AI questions ('chill', 'spicy', etc.)
+  • customPackEnabled: Whether custom questions are enabled
+
+Key Methods:
+  • getState(): Returns current game state
+  • getStates(): Returns all available states
+  • setState(newState): Transitions to new state
+  • advanceToNextPlayer(): Moves to next player in turn order
+  • getSettings(): Returns current game settings
+  • updateSettings(newSettings): Modifies game settings
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. assets/js/players.js — PLAYER MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Manages player data, colors, scores, and avatars.
+
+Player Object Structure:
+  {
+    id: number,              # Unique player ID
+    name: string,            # Player name (max 20 chars)
+    initials: string,        # 1-2 character initials for avatar
+    color: string,           # Hex color code
+    score: number,           # Current game score
+    skipsLeft: number        # Remaining skips (usually 1 per game)
+  }
+
+Avatar Colors:
+  • 10 curated vibrant colors (Indigo, Pink, Teal, Amber, Violet, Red, Cyan, 
+    Green, Orange, Purple)
+  • Assigned cyclically as players join
+
+Constraints:
+  • 2-10 players maximum
+  • Names must be 1-20 characters
+  • No duplicate names (case-insensitive)
+  • Empty names not allowed
+
+Key Methods:
+  • addPlayer(name): Adds new player, returns {success, player or error}
+  • removePlayer(id): Removes player from game
+  • getAll(): Gets all players array
+  • getById(id): Gets single player by ID
+  • updateScore(id, points): Adds points to player score
+  • getById(id): Gets player by ID
+  • reset(): Clears all players
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. assets/js/questions.js — QUESTION MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Loads and serves questions with no-repeat logic. Integrates custom 
+         and AI questions.
+
+Question Pool Structure (JSON):
+  truthsData = {
+    "friends": {
+      "easy": [array of 15 questions],
+      "medium": [array of 15 questions],
+      "wild": [array of 15 questions]
+    },
+    "couples": { ... },
+    "office": { ... },
+    "teens": { ... },
+    "spicy": { ... }
+  }
+
+No-Repeat System:
+  • Tracks used questions in Set: usedTruths, usedDares
+  • When pool exhausted (all questions used), resets tracking
+  • Ensures same question isn't asked twice until cycle completes
+
+Active Settings (per game):
+  • activePacks: Which packs to draw from
+  • activeDifficulty: Current difficulty level
+  • customPackEnabled: Whether to include custom questions
+
+Question Pools:
+  • 5 packs × 3 difficulty levels × 15 questions = 225 total questions per type
+  • Penalties list: Funny forfeit tasks for skipped turns
+
+Key Methods:
+  • loadData(): Fetches truths.json and dares.json from server
+  • setActivePacks(packs): Sets which category packs to use
+  • setActiveDifficulty(level): Sets difficulty (easy/medium/wild)
+  • getNextTruth(): Returns next truth question (no repeat)
+  • getNextDare(): Returns next dare question (no repeat)
+  • getRandomPenalty(): Returns random skip penalty
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. assets/js/timer.js — COUNTDOWN TIMER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Manages 60-second countdown for dare challenges with animated 
+         progress ring.
+
+Features:
+  • 60-second countdown
+  • Animated circular progress indicator
+  • Color change as time runs out (green → yellow → red)
+  • Pause/resume functionality
+  • Auto-end on timeout
+
+Visual Design:
+  • SVG circle for smooth animation
+  • Circumference calculation based on circle radius
+  • Stroke-dashoffset animated with CSS/JS
+  • Time displayed as MM:SS in center
+
+Key Methods:
+  • start(): Begins 60-second countdown
+  • pause(): Pauses the timer
+  • resume(): Resumes paused timer
+  • reset(): Clears timer and resets UI
+  • isRunning(): Returns if timer is currently running
+  • onTimeUp(callback): Sets callback when timer reaches 0
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. assets/js/scoring.js — SCORE MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Calculates points, tracks voting, and maintains game history log.
+
+Point System:
+  • Easy: 1 point per correct/completed answer
+  • Medium: 2 points per correct/completed answer
+  • Wild: 3 points per correct/completed answer
+  • Penalties: -1 point for skipping turn
+
+Voting System:
+  • Other players vote thumbs up (✓) or down (✗)
+  • Majority vote determines if points awarded
+  • Tied votes default to points awarded
+
+History Log:
+  • Tracks every question asked during game
+  • Shows: Round #, Player Name, Question Type, Question Text, Score Change
+  • Collapsible log UI for reference
+
+Data Structure:
+  history = [
+    { round: 1, player: 'Alice', type: 'truth', question: '...', 
+      scoreChange: +2 },
+    ...
+  ]
+
+Key Methods:
+  • recordQuestion(round, playerName, type, text): Adds to history
+  • recordVote(playerId, vote): Tracks player vote (true/false)
+  • calculatePoints(difficulty, votePassed): Returns points to award
+  • getHistory(): Returns full history log
+  • getHistoryForPlayer(playerName): Gets player's log entries
+  • reset(): Clears history for new game
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. assets/js/ui.js — SINGLE-PLAYER UI RENDERING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Renders all DOM elements for single-player game screens.
+
+Main Screens Rendered:
+  • Lobby Screen: Player list, add player input, settings button
+  • Game Board: Spinning wheel, card reveal area, leaderboard
+  • Winner Screen: Final standings with confetti animation
+
+Key Rendering Functions:
+  • renderLobbyScreen(): Draws lobby with player list and input
+  • renderGameBoard(): Draws game board with spinner and card area
+  • renderLeaderboard(): Updates live score display
+  • renderWinnerScreen(): Shows final standings with confetti
+  • renderWheelSpinner(): Animated selection wheel
+  • renderCard(question, type): Flips card with question reveal
+  • updateHistoryLog(): Adds entry to history log
+
+Event Binding:
+  • All UI interactions handled through event listeners
+  • Uses CSS classes to target elements
+  • Follows kebab-case naming convention (e.g., btn-add-player)
+
+Key Methods:
+  • initSettingsUI(): Sets up settings modal
+  • updatePlayerList(): Refreshes player display
+  • hideScreen(id): Hides screen by ID
+  • showScreen(id): Shows screen by ID
+  • renderNotification(message): Temporary toast message
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. assets/js/rooms.js — MULTIPLAYER ROOM MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Manages real-time multiplayer games using Firebase Realtime Database.
+
+Room Code Format: TRD-XXX (e.g., TRD-ABC)
+
+Firebase Structure:
+  /rooms/{roomCode}
+    ├── hostId: string (creator's user ID)
+    ├── createdAt: timestamp
+    ├── players: {
+    │   playerId: {
+    │     name: string,
+    │     color: string,
+    │     initials: string,
+    │     score: number,
+    │     joinedAt: timestamp,
+    │     isHost: boolean,
+    │     colorIndex: number,
+    │     status: 'ready' | 'playing' | 'idle'
+    │   }
+    │ }
+    ├── gameStarted: boolean
+    ├── currentPlayerIndex: number
+    ├── currentTurn: { playerIndex, playerId, timestamp }
+    ├── status: 'waiting' | 'playing' | 'finished'
+    ├── messages: { messageId: { userId, name, text, timestamp } }
+    └── settings: { packs, difficulty, totalRounds, etc. }
+
+Key Functions:
+  • createRoom(): Generates room code, becomes host
+  • joinRoom(roomCode): Joins existing room as player
+  • rejoinRoom(roomCode, userId): Reconnects after disconnect
+  • broadcastGameState(): Syncs game state to all players
+  • syncPlayerScores(): Updates leaderboard in real-time
+  • handlePlayerDisconnect(): Handles player leaving
+  • sendChatMessage(text): Broadcasts message to room
+  • isHost(): Returns if current user is host
+
+Session Storage (localStorage):
+  Stores: roomCode, userId, userName for reconnection after refresh
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. assets/js/firebase-config.js — FIREBASE SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Initializes Firebase Realtime Database for multiplayer functionality.
+
+Configuration:
+  • Firebase project API key
+  • Database URL
+  • Authentication setup (if applicable)
+
+Imports Firebase SDK and initializes database connection
+
+Used By: rooms.js for all database operations
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. assets/js/chat.js — REAL-TIME CHAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Manages real-time chat messages during multiplayer games.
+
+Features:
+  • Real-time message sync via Firebase
+  • Message history display
+  • Typing indicators (optional)
+  • Emoji support
+  • Username display with messages
+
+Message Structure:
+  {
+    messageId: string,
+    userId: string,
+    name: string (player name),
+    text: string,
+    timestamp: number
+  }
+
+Key Methods:
+  • sendMessage(text): Posts message to room
+  • getMessages(): Retrieves all room messages
+  • clearChat(): Clears message history
+  • onMessageReceived(callback): Listener for new messages
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. assets/js/turn-flow.js — TURN MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Manages turn sequence in multiplayer games (spinning, choosing, 
+         voting phases).
+
+Turn Phases:
+  1. Spin Phase: Wheel spins to select player
+  2. Choose Phase: Selected player chooses Truth or Dare
+  3. Question Phase: Question revealed with timer (if dare)
+  4. Voting Phase: Other players vote on completion
+  5. Result Phase: Score calculated and awarded
+
+Synchronization:
+  • All turn data synced to Firebase
+  • All players see same turn information
+  • Host controls turn progression
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. assets/js/multiplayer-ui.js — MULTIPLAYER UI RENDERING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Purpose: Renders UI for multiplayer game modes.
+
+Screens:
+  • Room selection screen (create/join room)
+  • Waiting lobby (waiting for other players)
+  • Multiplayer game board
+  • Multiplayer leaderboard with live updates
+  • Chat panel
+
+Key Features:
+  • Real-time player list
+  • Host controls (start game, kick player)
+  • Ready status indicators
+  • Disconnect warnings
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. ADDITIONAL MODULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ai-questions.js:
+  • Generates questions using AI API
+  • Supports different "vibes" (chill, spicy, etc.)
+  • Fallback to pool if AI unavailable
+
+custom-questions.js:
+  • Allows players to add their own questions
+  • Stores custom questions separately
+  • Includes in question pool if enabled
+
+host-controls.js:
+  • Host-specific controls (start game, end game, kick players)
+  • Settings modifications (difficulty, packs, rounds)
+
+ready-check.js:
+  • Manages player "ready" status
+  • Prevents game start until all players ready
+  • Visual ready indicators
+
+reactions.js:
+  • Emoji reaction system (😂, 😨, 👏, etc.)
+  • Real-time reaction sync in multiplayer
+  • Reactions display above player avatars
+
+spectator.js:
+  • Read-only spectator mode
+  • View game without affecting scores
+  • Chat access for spectators
+
+turn-tracker.js:
+  • Tracks turn order and progression
+  • Displays turn information
+  • Handles turn timeout
+
+
+================================================================================
+CSS FILES EXPLAINED
+================================================================================
+
+main.css:
+  • Design tokens: Colors (primary, secondary, success, warning, error)
+  • Layout system: Flexbox containers, grid layouts
+  • Typography: Font families, sizes, weights
+  • CSS reset: Normalize cross-browser styles
+  • Root variables: --color-primary, --spacing-unit, etc.
+
+components.css:
+  • Button styles: Primary, secondary, success, danger
+  • Card styles: Game cards, player cards, score cards
+  • Input fields: Text input, selects, checkboxes
+  • Modal/dialog styles
+  • Toast notification styles
+
+animations.css:
+  • @keyframes: rotate (wheel spinner), flip (card reveal), bounce, pulse
+  • Fade in/out effects
+  • Slide animations
+  • Confetti animation (winner screen)
+  • Timing functions and curves
+
+multiplayer.css:
+  • Multiplayer-specific layout
+  • Player list styling
+  • Room UI styles
+  • Host indicator styles
+
+multiplayer-animations.css:
+  • Animations for multiplayer elements
+  • Join/leave animations
+  • Status indicator animations
+
+chat.css:
+  • Chat container styling
+  • Message bubbles (user vs others)
+  • Input box styling
+  • Typing indicator animation
+
+turn-flow.css:
+  • Turn phase indicators
+  • Phase transition styles
+
+host-controls.css:
+  • Host control panel styling
+  • Admin buttons and modals
+
+
+================================================================================
+DATA FILES EXPLAINED
+================================================================================
+
+truths.json:
+  Structure:
+  {
+    "friends": {
+      "easy": [
+        "If you could have one superpower, what would it be?",
+        "What's your most embarrassing moment?",
+        ...
+      ],
+      "medium": [...],
+      "wild": [...]
+    },
+    "couples": {...},
+    "office": {...},
+    "teens": {...},
+    "spicy": {...}
+  }
+
+  • 5 category packs for different party types
+  • 3 difficulty levels per pack
+  • 15 questions per difficulty level
+  • Total: 225 truth questions
+
+
+dares.json:
+  Structure:
+  {
+    "friends": {
+      "easy": [
+        "Do your best impression of someone in this room",
+        "Sing the chorus of your favorite song",
+        ...
+      ],
+      "medium": [...],
+      "wild": [...]
+    },
+    "couples": {...},
+    "office": {...},
+    "teens": {...},
+    "spicy": {...},
+    "penalties": [
+      "Do 10 push-ups",
+      "Wear the group's hat for the next turn",
+      ...
+    ]
+  }
+
+  • 5 category packs for different party types
+  • 3 difficulty levels per pack
+  • 15 dares per difficulty level
+  • 15 penalty forfeit tasks for skipped turns
+  • Total: 225 dare questions + 15 penalties
+
+
+================================================================================
+GAME FLOW (STEP-BY-STEP)
+================================================================================
+
+SINGLE-PLAYER FLOW:
+━━━━━━━━━━━━━━━━━━━━
+
+1. User opens index.html → app.js runs DOMContentLoaded event
+2. Questions.loadData() loads truths.json and dares.json
+3. UI.renderLobbyScreen() displays lobby with input field
+4. User adds 2+ players → Players.addPlayer() adds each player
+5. User opens Settings → configures packs, difficulty, rounds
+6. User clicks "Start Game" → Game.setState('spinning')
+7. Wheel spinner animates → Game.advanceToNextPlayer()
+8. Current player sees Truth/Dare buttons
+9. Player clicks Truth or Dare → Game.setState('choosing')
+10. Card flips to reveal question from Questions.getNextTruth/Dare()
+11. If Dare: Timer.start() (60-second countdown)
+12. After completion: Game.setState('voting')
+13. Other players vote thumbs up/down
+14. Votes counted → Scoring.calculatePoints() determines score
+15. Points awarded → Player score updates
+16. Scoring.recordQuestion() adds to history log
+17. Loop back to step 7 until totalRounds reached
+18. Game.setState('game_over') → UI.renderWinnerScreen()
+19. Confetti animation plays
+20. User clicks "Play Again" to reset and start new game
+
+
+MULTIPLAYER FLOW:
+━━━━━━━━━━━━━━━━
+
+1. User opens page → same as single-player
+2. User clicks "Create Room" → Rooms.createRoom()
+   • Generates room code (TRD-ABC)
+   • Creates room in Firebase
+   • User becomes host
+3. Host shares room code with friends
+4. Friends click "Join Room" → Rooms.joinRoom(roomCode)
+   • Adds player to Firebase /rooms/{roomCode}/players
+   • Shows waiting lobby
+5. Firebase listeners trigger → MultiplayerUI updates in real-time
+6. All players see each other joining
+7. Host clicks "Start Game" when ready
+8. Game.setState('spinning') syncs to all players via Rooms.broadcastGameState()
+9. Each player sees same wheel spin
+10. Turn flows same as single-player, but synced across all clients
+11. Chat messages flow via Chat.sendMessage() → Firebase
+12. All players see real-time score updates
+13. Game ends → Winner screen shows on all clients simultaneously
+14. Optional: Play again with same players
+
+
+================================================================================
+KEY ARCHITECTURE PATTERNS
+================================================================================
+
+REVEALING MODULE PATTERN (IIFE):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Each module (Game, Players, Questions, etc.) uses Immediately Invoked 
+Function Expression (IIFE) to:
+  • Encapsulate private data (closures)
+  • Expose only public methods
+  • Prevent global namespace pollution
+
+Example:
+  const Module = (() => {
+    // Private variables
+    let privateData = [];
+    
+    // Private functions
+    function _privateHelper() { ... }
+    
+    // Public API
+    return {
+      publicMethod() { ... },
+      anotherPublic() { ... }
+    };
+  })();
+
+Benefits:
+  • Data privacy (private variables can't be accessed externally)
+  • Clear public interface
+  • No global variable conflicts
+
+
+STATE MACHINE PATTERN (Game.js):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Game uses explicit states with transitions:
+
+  States: LOBBY → SPINNING → CHOOSING → QUESTION → VOTING → RESULT → GAME_OVER
+
+Benefits:
+  • Only valid state transitions allowed
+  • Clear game flow
+  • Prevents invalid game states
+
+
+REACTIVE DATA PATTERNS (Firebase):
+━━━━━━━━━━━━━━━━━━━━━━━
+
+Uses Firebase listeners for real-time updates:
+  • onValue() listeners watch database paths
+  • Changes trigger callbacks
+  • All clients stay synchronized automatically
+
+Example:
+  db.ref(`/rooms/${roomCode}`).on('value', (snapshot) => {
+    const roomData = snapshot.val();
+    // Update UI with new data
+  });
+
+
+NO-REPEAT ALGORITHM (Questions.js):
+━━━━━━━━━━━━━━━━━
+
+Prevents duplicate questions:
+  1. Load question pool for selected pack/difficulty
+  2. Track asked questions in Set (usedQuestions)
+  3. When next question requested:
+     • Get random index from pool
+     • If in usedQuestions: try again
+     • If not used: return question, add to usedQuestions
+     • If all used: reset usedQuestions (new cycle)
+
+
+CSS CUSTOM PROPERTIES (Design Tokens):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All styling uses CSS variables for consistency:
+
+  :root {
+    --color-primary: #1f2937;
+    --color-truth: #3b82f6;
+    --color-dare: #f97316;
+    --spacing-unit: 8px;
+    --font-family: 'Segoe UI', sans-serif;
+  }
+
+Benefits:
+  • Consistent theming
+  • Easy dark mode support
+  • Centralized value management
+
+
+================================================================================
+IMPORTANT CONVENTIONS
+================================================================================
+
+NAMING CONVENTIONS:
+  • Classes: kebab-case (e.g., btn-add-player)
+  • IDs: kebab-case (e.g., lobby-screen)
+  • Functions: camelCase (e.g., addPlayer)
+  • Private functions: _camelCase (e.g., _getInitials)
+  • Constants: UPPER_SNAKE_CASE (e.g., MAX_PLAYERS)
+  • Module names: PascalCase (e.g., Game, Players, Questions)
+
+HTML STRUCTURE:
+  • Semantic HTML (use <header>, <section>, <button>, etc.)
+  • All screens wrapped in #app-container
+  • Each screen is a <section id="screen-name" class="screen">
+  • ARIA labels for accessibility
+
+CSS ORGANIZATION:
+  • Reset and tokens first (main.css)
+  • Components next (components.css)
+  • Animations separate (animations.css)
+  • Feature-specific styles in dedicated files
+  • Mobile-first responsive design (breakpoints: 900px, 600px)
+
+JAVASCRIPT ORGANIZATION:
+  • One module per file
+  • app.js is entry point
+  • game.js is central state
+  • UI.js handles rendering
+  • No inline DOM manipulation outside UI.js
+  • Event delegation used where appropriate
+
+
+================================================================================
+HOW TO RUN THE PROJECT
+================================================================================
+
+REQUIREMENTS:
+  • Any modern browser (Chrome, Firefox, Safari, Edge)
+  • Local HTTP server (required for fetch() to work)
+
+SETUP STEPS:
+
+Option 1: Python (built-in on Mac):
+  1. cd /Users/rohan/Desktop/PC/Project/truth-dare-game
+  2. python3 -m http.server 8000
+  3. Open http://localhost:8000 in browser
+
+Option 2: Node.js (if installed):
+  1. npm install -g serve
+  2. serve .
+  3. Open http://localhost:3000 in browser
+
+Option 3: VS Code Live Server:
+  1. Install "Live Server" extension
+  2. Right-click index.html
+  3. Select "Open with Live Server"
+
+⚠️  NOTE: Opening index.html directly (file://) won't work because fetch() 
+   requires HTTP protocol.
+
+MULTIPLAYER SETUP:
+  1. Deploy to Firebase Hosting (or online server)
+  2. Players access via public URL
+  3. Create/join rooms using room codes
+  4. Firebase syncs game state in real-time
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "Failed to load question data" error
+Solution: Ensure HTTP server is running (file:// protocol won't work)
+
+Problem: Players not syncing in multiplayer
+Solution: Check Firebase config in firebase-config.js is correct
+
+Problem: Confetti not animating on winner screen
+Solution: Ensure animations.css is loaded
+
+Problem: Timer not showing for dares
+Solution: Check timer.js module is loaded before game.js
+
+Problem: Duplicate names not prevented
+Solution: Check Players.addPlayer() validation logic
+
+Problem: Questions repeating too often
+Solution: Check Questions no-repeat Set is being tracked properly
+
+
+================================================================================
+FUTURE ENHANCEMENT IDEAS
+================================================================================
+
+1. Leaderboard persistence (save scores to local storage)
+2. Custom avatar images (user uploads)
+3. Sound effects and background music
+4. Accessibility improvements (keyboard navigation, screen reader support)
+5. Mobile app version (React Native)
+6. Game modes: Time attacks, lightning rounds
+7. Video integration: Record dare videos
+8. AI moderator: Narrates questions with voice
+9. Tournament mode: Multiple games with playoffs
+10. API for custom content: Community-submitted questions
+
+
+================================================================================
+PROJECT SUMMARY
+================================================================================
+
+Truth & Dare is a production-ready, fully-featured party game combining:
+  • Clean, modular JavaScript architecture
+  • Responsive, animated CSS design
+  • Real-time multiplayer via Firebase
+  • No external dependencies (vanilla code)
+  • Comprehensive question database (225+ questions)
+  • Smooth game flow and state management
+
+The codebase follows best practices for scalability, maintainability, and 
+extensibility. Each module has clear responsibilities and a public API. 
+New features can be added by creating new modules or extending existing ones.
+
+Perfect for parties, icebreakers, and team-building activities! 🎉
+
+================================================================================
+END OF EXPLANATION
+================================================================================
