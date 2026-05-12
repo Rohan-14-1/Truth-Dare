@@ -6,14 +6,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load question data before anything else
   await Questions.loadData();
 
-  // Initialize the lobby screen
-  UI.renderLobbyScreen();
-  // Render multiplayer room controls
-  if (typeof MultiplayerUI !== 'undefined') {
-    MultiplayerUI.renderRoomSelectScreen();
-  }
-  UI.initSettingsUI();
+  // --- Rejoin after disconnect ---
+  const stored = (() => {
+    try { return JSON.parse(localStorage.getItem('truth-dare-session') || 'null'); } catch { return null; }
+  })();
 
+  if (stored?.roomCode && stored?.userId && typeof Rooms !== 'undefined') {
+    const rejoinResult = await Rooms.rejoinRoom(stored.roomCode, stored.userId);
+    if (rejoinResult.success) {
+      // Show waiting lobby (game may or may not have started)
+      Rooms.showToast('✅ Rejoined your room!', 'success');
+      if (typeof MultiplayerUI !== 'undefined') MultiplayerUI.showWaitingLobby();
+      return; // Skip normal lobby init
+    } else {
+      // Seat lost – clear storage and fall through to lobby
+      localStorage.removeItem('truth-dare-session');
+      if (rejoinResult.error) Rooms.showToast(rejoinResult.error, 'warning');
+    }
+  }
+
+  // --- Normal startup ---
+  UI.renderLobbyScreen();
+  if (typeof MultiplayerUI !== 'undefined') MultiplayerUI.renderRoomSelectScreen();
+  UI.initSettingsUI();
   _bindLobbyEvents();
   _bindSettingsEvents();
   _bindGlobalEvents();
