@@ -124,14 +124,16 @@ const Game = (() => {
    * Starts a new game from the lobby.
    */
   async function startGame() {
-    if (Players.count() < 2 && !Rooms.isInRoom()) return;
+    const _isSpectator = typeof Spectator !== 'undefined' && Spectator.isSpectator();
+
+    if (Players.count() < 2 && !Rooms.isInRoom() && !_isSpectator) return;
 
     currentRound = 1;
     turnsThisRound = 0;
     currentPlayerIndex = -1;
     Questions.resetUsed();
     Scoring.clearHistory();
-    Players.resetScores();
+    if (!_isSpectator) Players.resetScores();
 
     Questions.setActivePacks(settings.packs);
     Questions.setDifficulty(settings.difficulty);
@@ -144,33 +146,42 @@ const Game = (() => {
 
     state = STATES.SPINNING;
 
-    // If playing in a room, sync players from room and initialize turn tracker
-    if (Rooms.isInRoom()) {
-      const roomPlayers = await Rooms.getRoomPlayers();
-      if (roomPlayers && roomPlayers.length >= 2) {
-        Players.clearAll();
-        // Ensure ordered list consistent with joinedAt
-        roomPlayers.sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
-        roomPlayers.forEach(p => Players.addPlayerObject(p));
-        const mapped = Players.getAll().map(p => ({ id: p.id, name: p.name, initials: p.initials, color: p.color, score: p.score }));
-        TurnTracker.initialize(mapped);
-        // If room has an existing currentPlayerIndex, sync it
-        const roomInfo = await Rooms.getRoomInfo();
-        if (roomInfo && typeof roomInfo.currentPlayerIndex === 'number' && roomInfo.currentPlayerIndex >= 0) {
-          TurnTracker.setTurnFromSync(roomInfo.currentPlayerIndex);
-          currentPlayerIndex = TurnTracker.getCurrentPlayerIndex();
-        } else {
-          TurnTracker.startTurn();
-          currentPlayerIndex = TurnTracker.getCurrentPlayerIndex();
-          // Push initial turn to Firebase
-          const cp = TurnTracker.getCurrentPlayer();
-          if (cp) await Rooms.updateCurrentTurn(currentPlayerIndex, cp.id);
+    // --- Multiplayer / Spectator: use TurnFlow ---
+    if (Rooms.isInRoom() || _isSpectator) {
+      const roomCode = _isSpectator ? Spectator.getRoomCode() : Rooms.getRoomCode();
+
+      // Always re-fetch players to ensure list is current (host AND non-host)
+      if (!_isSpectator && Rooms.isInRoom()) {
+        const roomPlayers = await Rooms.getRoomPlayers();
+        if (roomPlayers && roomPlayers.length >= 1) {
+          Players.clearAll();
+          roomPlayers.filter(p => p.role !== 'spectator')
+            .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0))
+            .forEach(p => Players.addPlayerObject(p));
         }
       }
-    } else {
-      _selectNextPlayer();
+
+      console.log('[Game] startGame — players loaded:', Players.count(), '| isHost:', Rooms.getIsHost());
+
+      UI.renderGameScreen();
+
+      // Init chat, reactions, host controls
+      if (typeof Chat !== 'undefined') Chat.init(roomCode);
+      if (typeof Reactions !== 'undefined') Reactions.init(roomCode);
+      if (!_isSpectator && typeof HostControls !== 'undefined' && Rooms.getIsHost()) {
+        HostControls.init(roomCode);
+      }
+
+      // Init TurnFlow — third param = spectatorMode (read-only)
+      if (typeof TurnFlow !== 'undefined') {
+        TurnFlow.init(roomCode, settings.totalRounds, _isSpectator);
+        if (!_isSpectator && Rooms.getIsHost()) await TurnFlow.startTurn();
+      }
+      return;
     }
 
+    // --- Local: old spinner flow ---
+    _selectNextPlayer();
     UI.renderGameScreen();
   }
 
