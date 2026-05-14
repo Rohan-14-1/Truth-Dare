@@ -109,6 +109,14 @@ const Rooms = (() => {
       isHost = true;
       _setupRoomListener();
 
+      // Persist session for rejoin-after-disconnect
+      localStorage.setItem('truth-dare-session', JSON.stringify({
+        roomCode, userId: currentUserId, host: true
+      }));
+      // Save player identity for cross-tab access by TurnFlow
+      sessionStorage.setItem('myPlayerId',   currentUserId);
+      sessionStorage.setItem('myPlayerName', playerName.trim());
+
       return { success: true, roomCode };
     } catch (error) {
       console.warn('Firebase room creation failed, falling back to local:', error.message);
@@ -144,6 +152,9 @@ const Rooms = (() => {
 
     // Save to room-specific localStorage key
     _saveLocalRoomData();
+    // Save player identity
+    sessionStorage.setItem('myPlayerId',   currentUserId);
+    sessionStorage.setItem('myPlayerName', playerName.trim());
 
     // Start listening for cross-tab storage changes
     _setupLocalStorageSync();
@@ -188,11 +199,16 @@ const Rooms = (() => {
       }
 
       const roomData = snapshot.val();
+      if (roomData.locked) {
+        return { success: false, error: 'Room is locked. No new players can join.' };
+      }
       if (roomData.gameStarted) {
         return { success: false, error: 'Game has already started in this room.' };
       }
 
-      const existingPlayers = roomData.players || {};
+      const existingPlayers = Object.fromEntries(
+        Object.entries(roomData.players || {}).filter(([,p]) => p.role !== 'spectator')
+      );
       const playerCount = Object.keys(existingPlayers).length;
 
       if (playerCount >= 10) {
@@ -231,6 +247,14 @@ const Rooms = (() => {
       currentRoomCode = roomCode;
       isHost = false;
       _setupRoomListener();
+
+      // Persist session for rejoin-after-disconnect
+      localStorage.setItem('truth-dare-session', JSON.stringify({
+        roomCode, userId: currentUserId, name: playerName.trim()
+      }));
+      // Save player identity for cross-tab access by TurnFlow
+      sessionStorage.setItem('myPlayerId',   currentUserId);
+      sessionStorage.setItem('myPlayerName', playerName.trim());
 
       return { success: true };
     } catch (error) {
@@ -290,6 +314,9 @@ const Rooms = (() => {
 
     // Save to room-specific key (this triggers storage event in other tabs!)
     _saveLocalRoomData();
+    // Save player identity
+    sessionStorage.setItem('myPlayerId',   currentUserId);
+    sessionStorage.setItem('myPlayerName', playerName.trim());
 
     // Start listening for cross-tab storage changes
     _setupLocalStorageSync();
@@ -396,9 +423,11 @@ const Rooms = (() => {
       roomStateListeners.forEach(callback => callback(roomData));
     });
 
-    // Setup presence tracking - remove player on disconnect
+    // Presence: mark online now, set disconnected on drop (don't remove so rejoin works)
     const playerRef = db.ref(`rooms/${currentRoomCode}/players/${currentUserId}`);
-    playerRef.onDisconnect().remove();
+    playerRef.child('status').set('online');
+    playerRef.child('status').onDisconnect().set('disconnected');
+    playerRef.child('lastSeen').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
   }
 
   /**
@@ -678,6 +707,9 @@ const Rooms = (() => {
    * Leave current room
    */
   async function leaveRoom() {
+    // Clear session — this is a deliberate leave, not a disconnect
+    localStorage.removeItem('truth-dare-session');
+
     // Remove player from local storage data first (for cross-tab sync)
     if (currentRoomCode && currentUserId && _useLocalFallback) {
       const key = `truth-dare-room-${currentRoomCode}`;
@@ -747,9 +779,28 @@ const Rooms = (() => {
     _showToast(message, type);
   }
 
+  /**
+   * Rejoin a room after disconnect using stored userId
+   */
+  async function rejoinRoom(roomCode, storedUserId) {
+    if (!FirebaseConfig.isReady()) return { success: false, error: 'Firebase required.' };
+    const db = FirebaseConfig.getDatabase();
+    const snap = await db.ref(`rooms/${roomCode}/players/${storedUserId}`).once('value');
+    if (!snap.exists()) return { success: false, error: 'Your seat was lost. Please join as a new player.' };
+    currentRoomCode = roomCode;
+    currentUserId = storedUserId;
+    const playerData = snap.val();
+    isHost = !!playerData.isHost;
+    // Restore status
+    await db.ref(`rooms/${roomCode}/players/${storedUserId}/status`).set('online');
+    _setupRoomListener();
+    return { success: true };
+  }
+
   return {
     createRoom,
     joinRoom,
+    rejoinRoom,
     getRoomPlayers,
     getRoomInfo,
     startGameInRoom,
@@ -766,6 +817,8 @@ const Rooms = (() => {
     leaveRoom,
     checkURLForRoom,
     getCurrentUserId,
-    showToast
+    showToast,
+    isLocalFallback: () => _useLocalFallback,
+    getLocalPlayers: () => _localPlayers || []
   };
 })();
