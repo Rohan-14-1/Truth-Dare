@@ -73,7 +73,14 @@ const UI = (() => {
     const container = document.getElementById('player-list');
     if (!container) return;
     container.innerHTML = '';
-    Players.getAll().forEach((p, i) => {
+
+    const allPlayers = Players.getAll();
+
+    // Update count badge
+    const countBadge = document.getElementById('player-count-badge');
+    if (countBadge) countBadge.textContent = `(${allPlayers.length}/10)`;
+
+    allPlayers.forEach((p, i) => {
       const tag = _el('div', 'player-tag');
       tag.style.animationDelay = `${i * 0.05}s`;
       tag.innerHTML = `
@@ -104,13 +111,219 @@ const UI = (() => {
     renderLeaderboard();
     renderHistoryLog();
     _updateRoundDisplay();
-    // Render multiplayer UI elements if available
+
+    const _isSpectator = typeof Spectator !== 'undefined' && Spectator.isSpectator();
+
+    // Spectator badge
+    const gameScreen = document.getElementById('game-screen');
+    if (_isSpectator && gameScreen) {
+      gameScreen.classList.add('spectator-mode');
+      let badge = document.getElementById('spectator-badge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'spectator-badge';
+        badge.className = 'spectator-badge';
+        badge.innerHTML = '👁 You are spectating';
+        const header = gameScreen.querySelector('.game-header');
+        if (header) header.prepend(badge);
+      }
+    }
+
+    // Render multiplayer avatar bar + queue
     if (typeof MultiplayerUI !== 'undefined') {
       MultiplayerUI.renderPlayerAvatarsBar();
       MultiplayerUI.renderNextPlayerQueue();
     }
-    Game.spinForPlayer();
+
+    // Render chat panel if in room OR spectating
+    const inRoomOrSpectating = (typeof Rooms !== 'undefined' && Rooms.isInRoom()) || _isSpectator;
+    if (inRoomOrSpectating) {
+      _renderChatPanel();
+      _renderEmojiBar();
+      if (!_isSpectator) _wireHostIngamePanel();
+    }
+
+    // Local game: start spinner flow (only if not in room AND not spectating)
+    if (!inRoomOrSpectating) {
+      Game.spinForPlayer();
+    }
   }
+
+  function _wireHostIngamePanel() {
+    if (typeof Rooms === 'undefined' || !Rooms.getIsHost()) return;
+
+    const card = document.getElementById('host-ingame-card');
+    if (card) card.style.display = 'block';
+
+    let _paused = false;
+    let _locked = false;
+
+    const pauseBtn = document.getElementById('btn-pause-game');
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => {
+        _paused = !_paused;
+        pauseBtn.textContent = _paused ? '▶️ Resume Game' : '⏸️ Pause Game';
+        pauseBtn.classList.toggle('active', _paused);
+        if (typeof HostControls !== 'undefined') HostControls.pauseGame(_paused);
+      });
+    }
+
+    const lockBtn = document.getElementById('btn-lock-game');
+    if (lockBtn) {
+      lockBtn.addEventListener('click', () => {
+        _locked = !_locked;
+        lockBtn.textContent = _locked ? '🔓 Unlock Room' : '🔒 Lock Room';
+        lockBtn.classList.toggle('active', _locked);
+        if (typeof HostControls !== 'undefined') HostControls.lockRoom(_locked);
+      });
+    }
+
+    // Render host player management panel (kick/mute/transfer)
+    if (typeof HostControls !== 'undefined') {
+      Rooms.getRoomPlayers().then(players => {
+        const playersObj = {};
+        players.forEach(p => { playersObj[p.id] = p; });
+        HostControls.renderHostPanel(playersObj);
+      });
+    }
+  }
+
+  function _renderChatPanel() {
+    // Ensure chat column exists
+    let chatCol = document.getElementById('game-chat-col');
+    if (!chatCol) {
+      chatCol = _el('div', '', '');
+      chatCol.id = 'game-chat-col';
+      const layout = document.querySelector('.game-layout');
+      if (layout) layout.appendChild(chatCol);
+    }
+
+    chatCol.innerHTML = `
+      <div class="chat-panel" id="chat-panel">
+        <div class="chat-header">
+          <h4>💬 Live Chat</h4>
+          <button class="btn-chat-collapse" id="btn-chat-collapse" title="Collapse">╱</button>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="emoji-reaction-bar" id="emoji-bar"></div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chat-input" placeholder="Type a message… (Enter to send)" rows="1" maxlength="300"></textarea>
+          <button class="chat-send-btn" id="chat-send-btn" title="Send">➤</button>
+        </div>
+      </div>
+    `;
+
+    // Emoji bar
+    if (typeof Reactions !== 'undefined') Reactions.renderEmojiBar('emoji-bar');
+
+    // Send message
+    const input  = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+
+    function _sendMsg(isAnswer) {
+      const txt = input.value.trim();
+      if (!txt) return;
+      input.value = '';
+      input.style.height = 'auto';
+      const type = isAnswer ? 'answer' : 'message';
+      if (typeof Chat !== 'undefined') Chat.send(txt, type);
+    }
+
+    sendBtn.addEventListener('click', () => _sendMsg(false));
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _sendMsg(false); }
+    });
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 80) + 'px';
+    });
+
+    // Collapse toggle
+    document.getElementById('btn-chat-collapse').addEventListener('click', () => {
+      const panel = document.getElementById('chat-panel');
+      panel.classList.toggle('chat-panel-collapsed');
+    });
+
+    // Subscribe to incoming messages
+    if (typeof Chat !== 'undefined') {
+      Chat.onMessage(msg => _appendChatMessage(msg));
+    }
+
+    // Mobile floating button
+    _renderChatFloatButton();
+  }
+
+  function _appendChatMessage(msg) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    const time     = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const div      = document.createElement('div');
+    const msgType  = msg.type || 'message';
+    div.className  = `chat-msg type-${msgType}`;
+
+    if (msgType === 'system') {
+      // Italic, centered, no avatar
+      div.innerHTML = `<div class="chat-msg-bubble chat-system"><em>${msg.text}</em></div>`;
+
+    } else if (msgType === 'answer' || msgType === 'official_answer') {
+      // Official answer — gold highlighted bubble with "Official Answer" label
+      const initials = msg.playerName ? msg.playerName.substring(0, 2).toUpperCase() : '?';
+      div.innerHTML = `
+        <div class="chat-msg-header">
+          <div class="chat-msg-avatar" style="background:${msg.playerColor || '#f59e0b'}">${initials}</div>
+          <span class="chat-msg-name">${msg.playerName || 'Player'}</span>
+          <span class="chat-official-label">📩 Official Answer</span>
+          <span class="chat-msg-time">${time}</span>
+        </div>
+        <div class="chat-msg-bubble chat-answer">${_escapeHtml(msg.text)}</div>`;
+
+    } else {
+      // Regular message — avatar circle, name, text, timestamp
+      const initials = msg.playerName ? msg.playerName.substring(0, 2).toUpperCase() : '?';
+      div.innerHTML = `
+        <div class="chat-msg-header">
+          <div class="chat-msg-avatar" style="background:${msg.playerColor || '#6366f1'}">${initials}</div>
+          <span class="chat-msg-name">${msg.playerName || 'Player'}</span>
+          <span class="chat-msg-time">${time}</span>
+        </div>
+        <div class="chat-msg-bubble">${_escapeHtml(msg.text)}</div>`;
+    }
+
+    container.appendChild(div);
+    // Auto-scroll to latest message
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function _escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function _renderEmojiBar() {
+    // Ensure emoji overlay exists at body level
+    if (!document.getElementById('emoji-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.id = 'emoji-overlay';
+      document.body.appendChild(overlay);
+    }
+  }
+
+  function _renderChatFloatButton() {
+    if (document.getElementById('chat-float-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'chat-float-btn';
+    btn.className = 'chat-float-btn';
+    btn.innerHTML = '💬 <span id="chat-unread-badge" style="display:none"></span>';
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById('chat-panel');
+      if (panel) {
+        panel.classList.toggle('chat-panel-open');
+        if (typeof Chat !== 'undefined') Chat.setChatOpen(panel.classList.contains('chat-panel-open'));
+      }
+    });
+    document.body.appendChild(btn);
+  }
+
 
   /**
    * Updates the round badge display.
