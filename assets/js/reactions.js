@@ -1,128 +1,80 @@
 /**
- * reactions.js — Emoji reaction system with floating animations.
- * Players can react to questions/dares with emoji reactions.
+ * reactions.js — Floating emoji reactions synced via Firebase
+ * Players can send 😂 😱 🔥 💀 ❤️ — they float across the screen for everyone
  */
 
 const Reactions = (() => {
-  // Available reaction emojis
-  const REACTION_SET = [
-    { emoji: '🔥', label: 'Fire', key: 'fire' },
-    { emoji: '😂', label: 'Laugh', key: 'laugh' },
-    { emoji: '😱', label: 'Shock', key: 'shock' },
-    { emoji: '💀', label: 'Dead', key: 'dead' },
-    { emoji: '👏', label: 'Clap', key: 'clap' },
-    { emoji: '😍', label: 'Love', key: 'love' }
-  ];
+  const EMOJIS = ['😂', '😱', '🔥', '💀', '❤️', '👏', '🤯', '😳'];
+  let _roomCode = null;
+  let _ref = null;
 
-  // Reaction counts for current question
-  let currentReactions = {};
+  function init(roomCode) {
+    _roomCode = roomCode;
+    _detach();
+    if (!FirebaseConfig.isReady()) return;
+    const db = FirebaseConfig.getDatabase();
+    _ref = db.ref(`rooms/${roomCode}/reactions`);
 
-  /**
-   * Gets the set of available reactions.
-   * @returns {object[]}
-   */
-  function getReactionSet() {
-    return [...REACTION_SET];
+    // Listen for new reactions and animate them
+    _ref.limitToLast(20).on('child_added', snap => {
+      const r = snap.val();
+      if (r) _animateReaction(r.emoji, r.x || 0.5, r.y || 0.8);
+    });
+
+    // Auto-cleanup old reactions older than 5 seconds
+    setInterval(() => {
+      const cutoff = Date.now() - 5000;
+      _ref.orderByChild('timestamp').endAt(cutoff).once('value', s => {
+        s.forEach(child => child.ref.remove());
+      });
+    }, 10000);
   }
 
-  /**
-   * Resets reaction counts for a new question.
-   */
-  function reset() {
-    currentReactions = {};
-    REACTION_SET.forEach(r => {
-      currentReactions[r.key] = 0;
+  async function send(emoji) {
+    const x = 0.1 + Math.random() * 0.8;
+    const y = 0.6 + Math.random() * 0.3;
+    const r = { emoji, x, y, timestamp: Date.now(), playerId: _getMyId() };
+    if (FirebaseConfig.isReady() && _ref) {
+      await _ref.push(r);
+    } else {
+      _animateReaction(emoji, x, y);
+    }
+  }
+
+  function _animateReaction(emoji, x, y) {
+    const overlay = document.getElementById('emoji-overlay');
+    if (!overlay) return;
+    const el = document.createElement('div');
+    el.className = 'floating-emoji';
+    el.textContent = emoji;
+    el.style.left = `${x * 100}%`;
+    el.style.top  = `${y * 100}%`;
+    overlay.appendChild(el);
+    setTimeout(() => el.remove(), 2500);
+  }
+
+  function renderEmojiBar(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = EMOJIS.map(e =>
+      `<button class="emoji-btn" data-emoji="${e}" title="React ${e}">${e}</button>`
+    ).join('');
+    container.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.addEventListener('click', () => send(btn.dataset.emoji));
     });
   }
 
-  /**
-   * Adds a reaction.
-   * @param {string} key - Reaction key
-   * @returns {{ count: number, emoji: string }}
-   */
-  function addReaction(key) {
-    if (currentReactions[key] !== undefined) {
-      currentReactions[key]++;
-    }
-    const reaction = REACTION_SET.find(r => r.key === key);
-    return {
-      count: currentReactions[key] || 0,
-      emoji: reaction ? reaction.emoji : '❓'
-    };
+  function reset() { /* nothing needed */ }
+
+  function _getMyId() {
+    return typeof Rooms !== 'undefined' ? Rooms.getCurrentUserId() : 'local';
   }
 
-  /**
-   * Gets current reaction counts.
-   * @returns {object}
-   */
-  function getCounts() {
-    return { ...currentReactions };
+  function _detach() {
+    if (_ref) { _ref.off(); _ref = null; }
   }
 
-  /**
-   * Gets the most popular reaction.
-   * @returns {{ key: string, emoji: string, count: number }|null}
-   */
-  function getMostPopular() {
-    let maxKey = null;
-    let maxCount = 0;
+  function destroy() { _detach(); _roomCode = null; }
 
-    for (const [key, count] of Object.entries(currentReactions)) {
-      if (count > maxCount) {
-        maxCount = count;
-        maxKey = key;
-      }
-    }
-
-    if (!maxKey || maxCount === 0) return null;
-
-    const reaction = REACTION_SET.find(r => r.key === maxKey);
-    return {
-      key: maxKey,
-      emoji: reaction ? reaction.emoji : '❓',
-      count: maxCount
-    };
-  }
-
-  /**
-   * Creates a floating emoji animation at a given position.
-   * @param {string} emoji - The emoji to float
-   * @param {HTMLElement} container - Container to append the floater to
-   * @param {number} x - X position
-   * @param {number} y - Y position
-   */
-  function createFloatingEmoji(emoji, container, x, y) {
-    const floater = document.createElement('div');
-    floater.className = 'floating-emoji';
-    floater.textContent = emoji;
-
-    // Randomize direction slightly
-    const offsetX = (Math.random() - 0.5) * 60;
-    floater.style.cssText = `
-      left: ${x}px;
-      top: ${y}px;
-      --float-x: ${offsetX}px;
-    `;
-
-    container.appendChild(floater);
-
-    // Remove after animation completes
-    floater.addEventListener('animationend', () => {
-      floater.remove();
-    });
-
-    // Fallback removal
-    setTimeout(() => {
-      if (floater.parentNode) floater.remove();
-    }, 1500);
-  }
-
-  return {
-    getReactionSet,
-    reset,
-    addReaction,
-    getCounts,
-    getMostPopular,
-    createFloatingEmoji
-  };
+  return { init, send, renderEmojiBar, reset, destroy };
 })();
