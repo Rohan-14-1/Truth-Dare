@@ -8,50 +8,42 @@ const MultiplayerUI = (() => {
   let _roomStateHandler = null;
 
   /**
-   * Render room creation/join buttons on the lobby screen
+   * Bind room creation/join events to the existing lobby HTML elements
    */
   function renderRoomSelectScreen() {
-    const lobbyScreen = document.getElementById('lobby-screen');
-    if (!lobbyScreen) return;
+    const createBtn = document.getElementById('btn-create-room');
+    const joinBtn = document.getElementById('btn-join-room');
+    const joinCodeInput = document.getElementById('join-code-inline');
 
-    // Remove existing if re-rendered
-    const existingRoom = document.getElementById('room-select-panel');
-    if (existingRoom) existingRoom.remove();
-
-    const roomPanel = document.createElement('div');
-    roomPanel.id = 'room-select-panel';
-    roomPanel.className = 'card lobby-card room-select-panel animate-fade-in';
-    roomPanel.innerHTML = `
-      <div class="lobby-card-header">
-        <h4>🌐 Multiplayer Mode</h4>
-      </div>
-      <div class="room-select-buttons">
-        <button class="btn btn-room-create btn-lg" id="btn-create-room">
-          <span class="btn-icon">🏠</span>
-          <span>Create Room</span>
-        </button>
-        <button class="btn btn-room-join btn-lg" id="btn-join-room">
-          <span class="btn-icon">🚪</span>
-          <span>Join Room</span>
-        </button>
-      </div>
-      <div class="room-mode-info">
-        <p>💡 <strong>Create:</strong> Host a game and share the code with friends</p>
-        <p>💡 <strong>Join:</strong> Enter a friend's room code to play together</p>
-      </div>
-    `;
-
-    // Insert before the player list card
-    const playerListCard = document.querySelector('.lobby-card');
-    if (playerListCard) {
-      playerListCard.parentNode.insertBefore(roomPanel, playerListCard);
-    } else {
-      lobbyScreen.appendChild(roomPanel);
+    if (createBtn) {
+      createBtn.addEventListener('click', showCreateRoomDialog);
     }
 
-    // Event handlers
-    document.getElementById('btn-create-room').addEventListener('click', showCreateRoomDialog);
-    document.getElementById('btn-join-room').addEventListener('click', showJoinRoomDialog);
+    if (joinBtn) {
+      joinBtn.addEventListener('click', () => {
+        const code = joinCodeInput ? joinCodeInput.value.trim() : '';
+        showJoinRoomDialog(code);
+      });
+    }
+
+    // Auto-format join code input
+    if (joinCodeInput) {
+      joinCodeInput.addEventListener('input', () => {
+        let val = joinCodeInput.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+        if (val.length === 3 && !val.includes('-') && val === 'TRD') {
+          val = 'TRD-';
+        }
+        joinCodeInput.value = val;
+      });
+
+      joinCodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const code = joinCodeInput.value.trim();
+          showJoinRoomDialog(code);
+        }
+      });
+    }
   }
 
   /* ═══════════════════════════════════════
@@ -127,7 +119,7 @@ const MultiplayerUI = (() => {
   /* ═══════════════════════════════════════
      JOIN ROOM DIALOG (inline, no prompt)
      ═══════════════════════════════════════ */
-  function showJoinRoomDialog() {
+  function showJoinRoomDialog(prefillCode) {
     _removeExistingModals();
 
     const modal = document.createElement('div');
@@ -146,9 +138,12 @@ const MultiplayerUI = (() => {
           <input type="text" id="join-room-name" class="input-field modal-input" placeholder="Enter your name..." maxlength="20" autocomplete="off">
           <div id="join-error" class="modal-error hidden"></div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="flex-direction:column;gap:var(--sp-sm)">
           <button class="btn btn-primary btn-lg modal-action-btn" id="btn-confirm-join" disabled>
             Join Room
+          </button>
+          <button class="btn btn-secondary modal-action-btn" id="btn-join-spectator" disabled style="font-size:var(--fs-sm)">
+            👁️ Watch as Spectator
           </button>
         </div>
       </div>
@@ -161,12 +156,22 @@ const MultiplayerUI = (() => {
     const closeBtn = document.getElementById('modal-close-join');
     const errorEl = document.getElementById('join-error');
 
-    codeInput.focus();
+    // Pre-fill code from inline input if provided
+    if (prefillCode && codeInput) {
+      codeInput.value = prefillCode.toUpperCase();
+      nameInput.focus();
+    } else {
+      codeInput.focus();
+    }
 
+    // Validation: enable both join buttons when inputs are filled
     function validateInputs() {
       const code = codeInput.value.trim();
       const name = nameInput.value.trim();
-      confirmBtn.disabled = code.length < 3 || name.length === 0;
+      const ok = code.length >= 3 && name.length > 0;
+      confirmBtn.disabled = !ok;
+      const specBtn = document.getElementById('btn-join-spectator');
+      if (specBtn) specBtn.disabled = !ok;
     }
 
     codeInput.addEventListener('input', validateInputs);
@@ -212,6 +217,29 @@ const MultiplayerUI = (() => {
         setTimeout(() => codeInput.classList.remove('animate-shake'), 500);
       }
     });
+
+    // Spectator join
+    const specBtn = document.getElementById('btn-join-spectator');
+    if (specBtn) {
+      specBtn.addEventListener('click', async () => {
+        const code = codeInput.value.trim().toUpperCase();
+        const name = nameInput.value.trim();
+        if (!code || !name) return;
+        errorEl.classList.add('hidden');
+        specBtn.disabled = true;
+        specBtn.innerHTML = '<span class="btn-spinner"></span> Joining...';
+        const result = await Spectator.join(code, name);
+        if (result.success) {
+          modal.remove();
+          showWaitingLobby();
+        } else {
+          specBtn.disabled = false;
+          specBtn.textContent = '👁️ Watch as Spectator';
+          errorEl.textContent = result.error || 'Failed to join as spectator';
+          errorEl.classList.remove('hidden');
+        }
+      });
+    }
 
     closeBtn.addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
@@ -266,11 +294,9 @@ const MultiplayerUI = (() => {
      WAITING LOBBY
      ═══════════════════════════════════════ */
   async function showWaitingLobby() {
-    // Hide the main lobby
     const lobbyScreen = document.getElementById('lobby-screen');
     if (lobbyScreen) lobbyScreen.style.display = 'none';
 
-    // Remove any previous waiting lobby
     const existingWaiting = document.getElementById('waiting-lobby-screen');
     if (existingWaiting) existingWaiting.remove();
 
@@ -279,12 +305,17 @@ const MultiplayerUI = (() => {
     waitingScreen.className = 'screen active';
     document.getElementById('app-container').appendChild(waitingScreen);
 
-    const displayCode = Rooms.getDisplayCode();
+    // Support both regular players and spectators
+    const isSpectatorMode = typeof Spectator !== 'undefined' && Spectator.isSpectator();
+    const displayCode = Rooms.getDisplayCode()
+      || (isSpectatorMode ? Spectator.getRoomCode() : '???');
+    const isHost = Rooms.getIsHost() && !isSpectatorMode;
 
     waitingScreen.innerHTML = `
       <header class="lobby-header waiting-lobby-header">
-        <div class="lobby-icon animate-bounce-soft">🎯</div>
-        <h1 class="title-gradient">Waiting Lobby</h1>
+        <div class="lobby-masks animate-bounce-soft">🎯</div>
+        <h1 class="lobby-title-new" style="font-size:2.5rem">Waiting Lobby</h1>
+        ${isSpectatorMode ? '<div style="display:inline-block;background:rgba(148,163,184,0.15);border:1px solid rgba(148,163,184,0.25);border-radius:999px;padding:4px 14px;font-size:0.75rem;color:#94a3b8;margin-bottom:8px">👁️ Watching as Spectator</div>' : ''}
         <div class="waiting-room-code">
           <span class="waiting-code-label">Room Code:</span>
           <span class="waiting-code-value">${displayCode}</span>
@@ -292,96 +323,274 @@ const MultiplayerUI = (() => {
         </div>
       </header>
 
-      <div class="card lobby-card waiting-card">
-        <div class="lobby-card-header">
-          <h4>👥 Players Joined (<span id="player-count">0</span>/10)</h4>
+      <div style="display:grid;grid-template-columns:1fr ${isHost ? '260px' : ''};gap:var(--sp-lg);width:100%;max-width:760px">
+        <div class="card waiting-card">
+          <div class="lobby-card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <h4>👥 Players (<span id="player-count">0</span>/10)</h4>
+            <span id="ready-count-display" style="font-size:var(--fs-sm);color:var(--clr-text-muted)"></span>
+          </div>
+          <div id="waiting-player-list" class="waiting-player-list"></div>
+          <div class="spectator-section" id="spectator-section" style="display:none">
+            <h5>👁️ Spectators</h5>
+            <div class="spectator-list" id="spectator-list"></div>
+          </div>
         </div>
-        <div id="waiting-player-list" class="waiting-player-list"></div>
+
+        ${isHost ? `
+        <div class="host-controls-card" style="align-self:start">
+          <h4>👑 Host Controls</h4>
+          <div id="host-controls-panel"></div>
+          <div class="host-game-controls">
+            <button class="btn btn-host-ctrl" id="btn-lock-room">🔒 Lock Room</button>
+            <div style="margin-top:var(--sp-sm);font-size:var(--fs-xs);color:var(--clr-text-muted);padding:0 var(--sp-sm)">Category Packs:</div>
+            <div id="host-pack-toggles" style="display:flex;flex-wrap:wrap;gap:4px;padding:var(--sp-sm)"></div>
+          </div>
+        </div>` : ''}
       </div>
 
-      <div class="lobby-actions waiting-lobby-actions">
-        ${Rooms.getIsHost()
-          ? '<button class="btn btn-primary btn-lg animate-pulse-glow" id="btn-start-from-lobby" disabled>🚀 Start Game</button>'
-          : '<div class="waiting-host-msg"><div class="waiting-dots"><span></span><span></span><span></span></div><p>Waiting for host to start the game...</p></div>'
+      <div class="lobby-actions waiting-lobby-actions" style="margin-top:var(--sp-xl)">
+        ${isSpectatorMode
+          ? ''
+          : isHost
+            ? '<button class="btn btn-start-game btn-lg" id="btn-start-from-lobby" disabled>🚀 Start Game</button>'
+            : '<button class="btn btn-ready-check" id="btn-ready-check">⚪ I\'m Ready</button>'
         }
-        <button class="btn btn-secondary" id="btn-leave-room">❌ Leave Room</button>
+        <button class="btn btn-settings-outline" id="btn-leave-room">❌ Leave Room</button>
       </div>
     `;
 
-    // Initial player list render
-    await _updateWaitingPlayerList();
+    // For spectators: skip initial player-list fetch — the Firebase .on('value') listener
+    // fires immediately with current data and will populate the list
+    if (!isSpectatorMode) {
+      await _updateWaitingPlayerList();
+    }
 
-    // Copy button
+    // Copy button (works for both player and spectator room codes)
     document.getElementById('btn-copy-waiting')?.addEventListener('click', async () => {
-      if (await Rooms.copyCodeToClipboard()) {
+      try {
+        await navigator.clipboard.writeText(displayCode);
         Rooms.showToast('📋 Room code copied!', 'success');
+      } catch {
+        if (Rooms.isInRoom()) Rooms.copyCodeToClipboard();
       }
     });
 
-    // Start button (host only)
-    const startBtn = document.getElementById('btn-start-from-lobby');
-    if (startBtn) {
-      startBtn.addEventListener('click', () => startGameFromRoom());
-
-      // Immediately check player count to enable/disable button (need 2+ players)
-      const initialPlayers = await Rooms.getRoomPlayers();
-      startBtn.disabled = initialPlayers.length < 2;
-    }
-
-    // Leave button
+    // Leave button — handles both regular players and spectators
     document.getElementById('btn-leave-room')?.addEventListener('click', () => {
-      Rooms.leaveRoom();
+      if (isSpectatorMode && typeof Spectator !== 'undefined') {
+        Spectator.destroy();
+      } else {
+        Rooms.leaveRoom();
+      }
       location.reload();
     });
 
-    // Listen for room updates (works via Firebase OR localStorage cross-tab sync)
-    if (_roomStateHandler) {
-      Rooms.offRoomStateChange(_roomStateHandler);
+    // Ready check (non-host)
+    const readyBtn = document.getElementById('btn-ready-check');
+    let _isReady = false;
+    if (readyBtn) {
+      readyBtn.addEventListener('click', () => {
+        _isReady = !_isReady;
+        if (typeof ReadyCheck !== 'undefined') ReadyCheck.setReady(_isReady);
+        readyBtn.textContent = _isReady ? '✅ Ready!' : '⚪ I\'m Ready';
+        readyBtn.classList.toggle('btn-ready-active', _isReady);
+      });
     }
-    _roomStateHandler = (roomData) => {
-      _updateWaitingPlayerList();
 
-      // Enable start button for host if >= 2 players
-      if (Rooms.getIsHost() && startBtn) {
-        const playerCount = Object.keys(roomData.players || {}).length;
-        startBtn.disabled = playerCount < 2;
+    // Host: lock room toggle
+    const lockBtn = document.getElementById('btn-lock-room');
+    let _locked = false;
+    if (lockBtn) {
+      lockBtn.addEventListener('click', () => {
+        _locked = !_locked;
+        lockBtn.textContent = _locked ? '🔓 Unlock Room' : '🔒 Lock Room';
+        lockBtn.classList.toggle('active', _locked);
+        if (typeof HostControls !== 'undefined') HostControls.lockRoom(_locked);
+      });
+    }
+
+    // Host: pack toggles
+    _renderHostPackToggles();
+
+    // Start button (host only)
+    // Enabled as soon as there are 2+ active players — ready check is informational only
+    const startBtn = document.getElementById('btn-start-from-lobby');
+    if (startBtn) {
+      startBtn.addEventListener('click', () => startGameFromRoom());
+      // Check player count immediately
+      const ip = await Rooms.getRoomPlayers();
+      const activeCount = ip.filter(p => p.role !== 'spectator').length;
+      startBtn.disabled = activeCount < 2;
+      // ReadyCheck still syncs badges, but doesn't gate the button
+      if (typeof ReadyCheck !== 'undefined') ReadyCheck.init(Rooms.getRoomCode());
+    }
+
+    // ── Room state listener ──────────────────────────────
+    if (isSpectatorMode) {
+      const spectatorCode = Spectator.getRoomCode();
+
+      if (Spectator.isLocalMode()) {
+        // ── Local fallback: room lives in localStorage ──────────
+        // Poll every 2 seconds so the spectator sees live updates
+        const _renderFromStorage = () => {
+          try {
+            const storageKey = `truth-dare-room-${spectatorCode}`;
+            const data = JSON.parse(localStorage.getItem(storageKey) || '{}');
+            const playersArr = Array.isArray(data.players)
+              ? data.players
+              : Object.values(data.players || {});
+            // Build a players-object keyed by id for _updateWaitingPlayerList
+            const playersObj = {};
+            playersArr.forEach(p => { playersObj[p.id] = p; });
+            _updateWaitingPlayerList(playersObj);
+            // Check if host started
+            if (data.gameStarted) {
+              clearInterval(_localPoll);
+              setTimeout(() => startGameFromRoom(), 800);
+            }
+          } catch (e) { /* ignore parse errors */ }
+        };
+
+        _renderFromStorage(); // immediate
+        const _localPoll = setInterval(_renderFromStorage, 2000);
+
+      } else if (typeof firebase !== 'undefined') {
+        // ── Firebase mode: use firebase SDK directly ────────────
+        const db      = firebase.database();
+        const roomRef = db.ref(`rooms/${spectatorCode}`);
+
+        // .on('value') fires immediately with current snapshot, then on every change
+        roomRef.on('value', snap => {
+          const roomData = snap.val();
+          if (!roomData) return;
+          _updateWaitingPlayerList(roomData.players || {});
+          if (roomData.gameStarted) {
+            roomRef.off();
+            setTimeout(() => startGameFromRoom(), 800);
+          }
+        });
+
+      } else {
+        // No data source available
+        const c = document.getElementById('waiting-player-list');
+        if (c) c.innerHTML = '<p style="color:var(--clr-text-muted);text-align:center;padding:1rem">⚠️ Could not load players — Firebase unavailable.</p>';
       }
 
-      // Non-host: if game started, jump to game
-      if (roomData.gameStarted && !Rooms.getIsHost()) {
-        Rooms.offRoomStateChange(_roomStateHandler);
-        _roomStateHandler = null;
-        setTimeout(() => startGameFromRoom(), 800);
-      }
-    };
-    Rooms.onRoomStateChange(_roomStateHandler);
+    } else {
+      // Regular player / host path
+      if (_roomStateHandler) Rooms.offRoomStateChange(_roomStateHandler);
+      _roomStateHandler = (roomData) => {
+        _updateWaitingPlayerList(roomData.players);
+
+        // Re-evaluate Start button state on every room update
+        if (isHost && startBtn) {
+          const activePlayers = Object.values(roomData.players || {})
+            .filter(p => p.role !== 'spectator');
+          startBtn.disabled = activePlayers.length < 2;
+        }
+
+        if (isHost && typeof HostControls !== 'undefined') {
+          HostControls.renderHostPanel(roomData.players || {});
+        }
+        if (roomData.gameStarted && !isHost) {
+          Rooms.offRoomStateChange(_roomStateHandler);
+          _roomStateHandler = null;
+          setTimeout(() => startGameFromRoom(), 800);
+        }
+      };
+      Rooms.onRoomStateChange(_roomStateHandler);
+    }
   }
+
 
   /**
    * Update waiting lobby player list from Firebase
    */
-  async function _updateWaitingPlayerList() {
-    const players = await Rooms.getRoomPlayers();
-    const container = document.getElementById('waiting-player-list');
-    const countEl = document.getElementById('player-count');
+  async function _updateWaitingPlayerList(playersObj) {
+    let players;
+    if (playersObj) {
+      players = Object.values(playersObj).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+    } else {
+      players = await Rooms.getRoomPlayers();
 
+      // Spectator fallback: Rooms has no session, read directly from Firebase
+      if ((!players || players.length === 0) && typeof Spectator !== 'undefined' && Spectator.isSpectator() && FirebaseConfig.isReady()) {
+        try {
+          const db = FirebaseConfig.getDatabase();
+          const snap = await db.ref(`rooms/${Spectator.getRoomCode()}/players`).once('value');
+          const data = snap.val() || {};
+          players = Object.values(data).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+        } catch (e) { players = []; }
+      }
+    }
+
+    const activePlayers  = players.filter(p => p.role !== 'spectator');
+    const spectators     = players.filter(p => p.role === 'spectator');
+
+    const container = document.getElementById('waiting-player-list');
+    const countEl   = document.getElementById('player-count');
     if (!container) return;
 
     container.innerHTML = '';
-    if (countEl) countEl.textContent = players.length;
+    if (countEl) countEl.textContent = activePlayers.length;
 
-    players.forEach((p, i) => {
+    activePlayers.forEach((p, i) => {
+      const statusClass = p.status === 'disconnected' ? 'status-dot-disconnected'
+        : p.status === 'idle' ? 'status-dot-idle' : 'status-dot-online';
       const playerEl = document.createElement('div');
       playerEl.className = 'waiting-player-item animate-fade-in';
+      playerEl.dataset.id = p.id;
       playerEl.style.animationDelay = `${i * 0.08}s`;
       playerEl.innerHTML = `
         <div class="avatar waiting-avatar" style="background:${p.color}">
           <span>${p.initials}</span>
         </div>
+        <span class="status-dot ${statusClass}"></span>
         <span class="player-name">${p.name}</span>
-        ${p.isHost ? '<span class="host-badge">👑 Host</span>' : ''}
+        ${p.isHost ? '<span class="host-badge">👑</span>' : ''}
+        <span class="ready-badge">${p.ready ? '✅' : '⏳'}</span>
       `;
       container.appendChild(playerEl);
+    });
+
+    // Spectators section
+    const spectSection = document.getElementById('spectator-section');
+    const spectList    = document.getElementById('spectator-list');
+    if (spectSection && spectList) {
+      spectSection.style.display = spectators.length > 0 ? 'block' : 'none';
+      spectList.innerHTML = spectators.map(s =>
+        `<span class="spectator-tag">👁️ ${s.name}</span>`
+      ).join('');
+    }
+  }
+
+  /**
+   * Render host pack toggle checkboxes
+   */
+  function _renderHostPackToggles() {
+    const container = document.getElementById('host-pack-toggles');
+    if (!container) return;
+    const PACKS = [
+      { id: 'friends', label: '👫 Friends' },
+      { id: 'couples', label: '💑 Couples' },
+      { id: 'party',   label: '🎉 Party' },
+      { id: 'wild',    label: '🔥 Wild' },
+      { id: 'custom',  label: '✏️ Custom' },
+    ];
+    const activePacks = Game.getSettings().packs || ['friends'];
+    PACKS.forEach(pack => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-host-ctrl' + (activePacks.includes(pack.id) ? ' active' : '');
+      btn.style.cssText = 'font-size:0.7rem;padding:3px 8px;flex:none';
+      btn.textContent = pack.label;
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('active');
+        const newPacks = Array.from(container.querySelectorAll('.active'))
+          .map(b => PACKS.find(p => p.label === b.textContent)?.id)
+          .filter(Boolean);
+        if (typeof HostControls !== 'undefined') HostControls.updateActivePacks(newPacks.length ? newPacks : ['friends']);
+      });
+      container.appendChild(btn);
     });
   }
 
@@ -585,55 +794,74 @@ const MultiplayerUI = (() => {
  * Start game from waiting room — bridges room data to the game engine
  */
 async function startGameFromRoom() {
-  if (Rooms.getIsHost()) {
+  const isSpectatorMode = typeof Spectator !== 'undefined' && Spectator.isSpectator();
+
+  // Only the host signals the room that the game started
+  if (Rooms.getIsHost() && !isSpectatorMode) {
     await Rooms.startGameInRoom();
   }
 
-  // Fetch all players from Firebase
-  const players = await Rooms.getRoomPlayers();
+  // Fetch all active players (spectator-aware)
+  let players = [];
+  if (isSpectatorMode && typeof Spectator !== 'undefined') {
+    // Spectator.fetchPlayers() handles both localStorage and Firebase
+    const all = await Spectator.fetchPlayers();
+    players = all.filter(p => p.role !== 'spectator');
+  } else {
+    players = await Rooms.getRoomPlayers();
+    players = players.filter(p => p.role !== 'spectator');
+  }
 
-  // Clear local player list and populate from room
+  // Populate local player list
   Players.clearAll();
-  players.forEach(p => {
-    Players.addPlayerObject(p);
-  });
+  players
+    .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0))
+    .forEach(p => Players.addPlayerObject(p));
 
   // Initialize turn tracker
   const mapped = Players.getAll().map(p => ({
-    id: p.id,
-    name: p.name,
-    initials: p.initials,
-    color: p.color,
-    score: p.score
+    id: p.id, name: p.name, initials: p.initials, color: p.color, score: p.score || 0
   }));
-  TurnTracker.initialize(mapped);
+  if (typeof TurnTracker !== 'undefined') TurnTracker.initialize(mapped);
 
-  // Remove waiting lobby screen
+  // Remove waiting lobby
   const waitingScreen = document.getElementById('waiting-lobby-screen');
   if (waitingScreen) waitingScreen.remove();
 
-  // Start the game
-  Game.startGame();
+  // Start the game engine (renders game screen, inits TurnFlow, Chat, etc.)
+  await Game.startGame();
 
   // Render multiplayer UI
   MultiplayerUI.renderPlayerAvatarsBar();
   MultiplayerUI.renderNextPlayerQueue();
 
-  // Listen for turn changes from Firebase (non-host)
+  // Non-host / spectator: listen for turn syncs
   if (!Rooms.getIsHost()) {
-    Rooms.onRoomStateChange((roomData) => {
-      if (roomData.currentTurn && typeof roomData.currentPlayerIndex === 'number') {
-        TurnTracker.setTurnFromSync(roomData.currentPlayerIndex);
-        Game.setCurrentPlayerIndex(roomData.currentPlayerIndex);
-        MultiplayerUI.updatePlayerAvatarsBar();
-        MultiplayerUI.updateNextPlayerQueue();
-      }
-    });
+    if (isSpectatorMode && Spectator.isLocalMode()) {
+      // Local mode: poll localStorage for turn changes
+      setInterval(() => {
+        const data = JSON.parse(localStorage.getItem(`truth-dare-room-${Spectator.getRoomCode()}`) || '{}');
+        if (typeof data.currentPlayerIndex === 'number' && typeof TurnTracker !== 'undefined') {
+          TurnTracker.setTurnFromSync(data.currentPlayerIndex);
+          MultiplayerUI.updatePlayerAvatarsBar();
+          MultiplayerUI.updateNextPlayerQueue();
+        }
+      }, 2000);
+    } else {
+      Rooms.onRoomStateChange((roomData) => {
+        if (roomData.currentTurn && typeof roomData.currentPlayerIndex === 'number') {
+          if (typeof TurnTracker !== 'undefined') TurnTracker.setTurnFromSync(roomData.currentPlayerIndex);
+          MultiplayerUI.updatePlayerAvatarsBar();
+          MultiplayerUI.updateNextPlayerQueue();
+        }
+      });
+    }
   }
 
-  // Listen for turn changes to update UI
-  TurnTracker.onTurnChange((turnData) => {
-    MultiplayerUI.updatePlayerAvatarsBar(turnData);
-    MultiplayerUI.updateNextPlayerQueue(turnData);
-  });
+  if (typeof TurnTracker !== 'undefined') {
+    TurnTracker.onTurnChange((turnData) => {
+      MultiplayerUI.updatePlayerAvatarsBar(turnData);
+      MultiplayerUI.updateNextPlayerQueue(turnData);
+    });
+  }
 }
