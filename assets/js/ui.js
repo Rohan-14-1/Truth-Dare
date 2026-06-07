@@ -256,6 +256,8 @@ const UI = (() => {
         <div class="chat-messages" id="chat-messages"></div>
         <div class="emoji-reaction-bar" id="emoji-bar"></div>
         <div class="chat-input-row">
+          <input type="file" id="chat-file-input" accept="image/*,video/*" style="display:none">
+          <button class="chat-attach-btn" id="chat-attach-btn" title="Send a photo or video">📎</button>
           <textarea class="chat-input" id="chat-input" placeholder="Type a message… (Enter to send)" rows="1" maxlength="300"></textarea>
           <button class="chat-send-btn" id="chat-send-btn" title="Send">➤</button>
         </div>
@@ -286,6 +288,24 @@ const UI = (() => {
       input.style.height = 'auto';
       input.style.height = Math.min(input.scrollHeight, 80) + 'px';
     });
+
+    // Attach photo / video
+    const fileInput = document.getElementById('chat-file-input');
+    const attachBtn = document.getElementById('chat-attach-btn');
+    if (attachBtn && fileInput) {
+      attachBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', async () => {
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.value = ''; // allow re-selecting the same file later
+        if (!file || typeof Chat === 'undefined' || !Chat.sendMedia) return;
+        attachBtn.disabled = true;
+        attachBtn.textContent = '⏳';
+        let res;
+        try { res = await Chat.sendMedia(file); }
+        finally { attachBtn.disabled = false; attachBtn.textContent = '📎'; }
+        if (res && !res.success && res.error) window.alert(res.error);
+      });
+    }
 
     // Collapse toggle
     document.getElementById('btn-chat-collapse').addEventListener('click', () => {
@@ -330,9 +350,40 @@ const UI = (() => {
         </div>
         <div class="chat-msg-bubble chat-answer">${_escapeHtml(msg.text)}</div>`;
 
-    } else {
-      // Regular message — avatar circle, name, text, timestamp
+    } else if (msgType === 'image' || msgType === 'video') {
+      // Photo / video — header + a media bubble whose blob loads asynchronously
+      // from the shared media store.
       const initials = msg.playerName ? msg.playerName.substring(0, 2).toUpperCase() : '?';
+      div.innerHTML = `
+        <div class="chat-msg-header">
+          <div class="chat-msg-avatar" style="background:${msg.playerColor || '#6366f1'}">${initials}</div>
+          <span class="chat-msg-name">${msg.playerName || 'Player'}</span>
+          <span class="chat-msg-time">${time}</span>
+        </div>
+        <div class="chat-msg-bubble chat-media-bubble">
+          <div class="chat-media-loading">${msgType === 'image' ? '🖼 Loading photo…' : '🎬 Loading video…'}</div>
+        </div>`;
+
+      if (typeof Chat !== 'undefined' && Chat.getMedia && msg.mediaId) {
+        Chat.getMedia(msg.mediaId).then(blob => {
+          const bubble = div.querySelector('.chat-media-bubble');
+          if (!bubble) return;
+          if (!blob) {
+            bubble.innerHTML = '<div class="chat-media-missing">📎 Media not available on this device</div>';
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          if (msgType === 'image') {
+            bubble.innerHTML = `<img class="chat-media" src="${url}" alt="shared photo" loading="lazy">`;
+            bubble.querySelector('img')?.addEventListener('click', () => window.open(url, '_blank'));
+          } else {
+            bubble.innerHTML = `<video class="chat-media" src="${url}" controls preload="metadata"></video>`;
+          }
+          container.scrollTop = container.scrollHeight;
+        }).catch(() => {});
+      }
+
+    } else {
       div.innerHTML = `
         <div class="chat-msg-header">
           <div class="chat-msg-avatar" style="background:${msg.playerColor || '#6366f1'}">${initials}</div>
