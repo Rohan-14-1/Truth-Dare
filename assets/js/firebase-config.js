@@ -25,6 +25,25 @@ const FirebaseConfig = (() => {
       appId: "1:123456789:web:abcdef123456"
     };
 
+    // Guard: the bundled config is a non-functional placeholder. Initializing
+    // against it succeeds silently but produces a dead connection whose cached
+    // listener can clobber the localStorage turn-state mid-game (breaking turn 2+).
+    // Treat placeholder credentials as "not configured" so the app runs cleanly
+    // in local cross-tab mode. Pass a real config to initialize() to enable sync.
+    const _isPlaceholder =
+      !config &&
+      (/Demo/i.test(firebaseConfig.apiKey || '') ||
+       (firebaseConfig.messagingSenderId === '123456789'));
+
+    if (_isPlaceholder) {
+      console.warn('⚠️ Firebase config is a placeholder — running in local-only mode. ' +
+        'Pass a real config to FirebaseConfig.initialize() to enable multiplayer sync.');
+      connectionState = 'error';
+      isInitialized = false;
+      db = null;
+      return;
+    }
+
     try {
       if (typeof firebase !== 'undefined' && !isInitialized) {
         firebase.initializeApp(firebaseConfig);
