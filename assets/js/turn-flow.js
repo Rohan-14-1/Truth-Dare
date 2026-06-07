@@ -212,6 +212,27 @@ const TurnFlow = (() => {
     const main = document.getElementById('game-main-content');
     if (!main) { console.warn('[TurnFlow] #game-main-content not found'); return; }
 
+    // Self-heal: these phases REQUIRE an answerer. If the incoming state is
+    // missing it (e.g. a stale/partial sync arrived out of order), re-read the
+    // authoritative local state once instead of rendering a broken "undefined"
+    // screen. This is what kept turns after the first from working.
+    const _needsAnswerer = state.turnPhase === PHASES.CHOOSING
+      || state.turnPhase === PHASES.QUESTIONING
+      || state.turnPhase === PHASES.AWAITING
+      || state.turnPhase === PHASES.JUDGING;
+    if (_needsAnswerer && !state.currentAnswerer) {
+      const fresh = _readLocalState();
+      if (fresh && fresh.currentAnswerer) {
+        state = fresh;
+        _lastState = { ...fresh, currentQuestion: fresh.currentQuestion };
+      } else {
+        // No valid answerer anywhere yet — wait for the correct state to arrive
+        // rather than painting an "undefined" turn.
+        setTimeout(() => { const s = _readLocalState(); if (s) _applyState(s); }, 250);
+        return;
+      }
+    }
+
     // Always re-read identity — sessionStorage is tab-isolated so this is safe
     const freshId = sessionStorage.getItem('myPlayerId')
                   || (typeof Rooms !== 'undefined' ? Rooms.getCurrentUserId() : null)
