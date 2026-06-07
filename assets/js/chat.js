@@ -98,6 +98,139 @@ const Chat = (() => {
   }
 
   function sendAnswer(text)       { return send(text, 'answer'); }
+
+  /* ─── Media (photo / video) ───────────────────────────────────────────
+     Bytes are stored in IndexedDB (large quota, shared across same-browser
+     tabs); only a lightweight reference travels through the chat message, so
+     localStorage never overflows. NOTE: the blob lives in THIS browser's
+     IndexedDB — true cross-DEVICE media needs Firebase Storage (see sendMedia).
+  ──────────────────────────────────────────────────────────────────────── */
+  const _MEDIA_DB = 'truth-dare-media';
+  const _MEDIA_ST = 'media';
+  let   _dbPromise = null;
+  const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 25 MB cap for video
+
+  function _openMediaDB() {
+    if (_dbPromise) return _dbPromise;
+    _dbPromise = new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) { reject(new Error('IndexedDB unavailable')); return; }
+      const req = indexedDB.open(_MEDIA_DB, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(_MEDIA_ST)) db.createObjectStore(_MEDIA_ST);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => reject(req.error);
+    });
+    return _dbPromise;
+  }
+
+  function _mediaPut(key, blob) {
+    return _openMediaDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(_MEDIA_ST, 'readwrite');
+      tx.objectStore(_MEDIA_ST).put(blob, key);
+      tx.oncomplete = () => resolve(key);
+      tx.onerror    = () => reject(tx.error);
+    }));
+  }
+
+  function _mediaGet(key) {
+    return _openMediaDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(_MEDIA_ST, 'readonly');
+      const r  = tx.objectStore(_MEDIA_ST).get(key);
+      r.onsuccess = () => resolve(r.result || null);
+      r.onerror   = () => reject(r.error);
+    }));
+  }
+
+  // Downscale + re-encode an image to keep it small and fast to render.
+  function _compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1280;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          const scale = Math.min(MAX / width, MAX / height);
+          width  = Math.round(width  * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('compress failed')), 'image/jpeg', 0.8);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+      img.src = url;
+    });
+  }
+
+  /**
+   * Send a photo or video. Returns { success, error? }.
+   * @param {File} file
+   */
+  async function sendMedia(file) {
+    if (!file || !_roomCode) return { success: false, error: 'Nothing to send.' };
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isVideo) return { success: false, error: 'Only photos and videos can be sent.' };
+
+    let blob = file;
+    let mime = file.type;
+    try {
+      if (isImage) {
+        blob = await _compressImage(file);
+        mime = blob.type || 'image/jpeg';
+      } else if (file.size > MAX_VIDEO_BYTES) {
+        return { success: false, error: 'Video is too large (max 25 MB).' };
+      }
+    } catch (e) {
+      blob = file; // compression failed — store the original
+    }
+
+    const mediaId = `media_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    try {
+      await _mediaPut(mediaId, blob); // commit BEFORE announcing, so other tabs can read it
+    } catch (e) {
+      return { success: false, error: 'Could not store the file on this device.' };
+    }
+
+    const myId    = sessionStorage.getItem('myPlayerId')   || 'unknown';
+    const myName  = sessionStorage.getItem('myPlayerName') || 'You';
+    const players = typeof Players !== 'undefined' ? Players.getAll() : [];
+    const me      = players.find(p => p.id === myId) || { color: '#6366f1' };
+
+    const msg = {
+      id:          `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      playerId:    myId,
+      playerName:  myName,
+      playerColor: me.color || '#6366f1',
+      type:        isImage ? 'image' : 'video',
+      mediaId,
+      mime,
+      fileName:    file.name || '',
+      text:        '',
+      timestamp:   Date.now()
+    };
+
+    if (!_isLocal && _chatRef) {
+      // Online (real Firebase) note: the blob is only in THIS device's IndexedDB,
+      // so remote peers would see a placeholder. For true cross-device media,
+      // upload `blob` to Firebase Storage here and store the download URL on msg.
+      try { await _chatRef.push(msg); return { success: true }; } catch { /* fall through */ }
+    }
+    _appendLocal(msg);
+    _deliver(msg);
+    return { success: true };
+  }
+
+  /** Retrieve a stored media blob by id. @returns {Promise<Blob|null>} */
+  function getMedia(mediaId) {
+    return _mediaGet(mediaId).catch(() => null);
+  }
+
   function sendSystem(text) {
     const id  = `sys_${Date.now()}`;
     const msg = {
@@ -162,5 +295,5 @@ const Chat = (() => {
     _seenIds.clear();
   }
 
-  return { init, send, sendAnswer, sendSystem, onMessage, setChatOpen, getUnreadCount, destroy };
+  return { init, send, sendAnswer, sendMedia, getMedia, sendSystem, onMessage, setChatOpen, getUnreadCount, destroy };
 })();
