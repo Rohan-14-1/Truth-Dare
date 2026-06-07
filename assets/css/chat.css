@@ -199,6 +199,45 @@
 }
 .chat-send-btn:hover { box-shadow: 0 4px 16px rgba(99,102,241,0.4); transform: translateY(-1px); }
 
+/* ── Attach (photo/video) button ── */
+.chat-attach-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  color: var(--clr-text-secondary);
+  font-size: 1.05rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  transition: all var(--transition-fast);
+}
+.chat-attach-btn:hover { background: rgba(255,255,255,0.1); color: var(--clr-text-primary); }
+.chat-attach-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* ── Media bubbles (shared photos / videos) ── */
+.chat-media-bubble { padding: 4px; max-width: 100%; }
+.chat-media {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  width: auto;
+  border-radius: var(--radius-md);
+  background: rgba(0,0,0,0.25);
+}
+.chat-media-bubble img.chat-media { cursor: zoom-in; }
+.chat-media-loading,
+.chat-media-missing {
+  font-size: var(--fs-xs);
+  color: var(--clr-text-muted);
+  padding: 8px 10px;
+  font-style: italic;
+}
+
 /* ── Emoji Reaction Bar ── */
 .emoji-reaction-bar {
   display: flex;
