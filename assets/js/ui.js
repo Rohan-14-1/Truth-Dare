@@ -111,6 +111,7 @@ const UI = (() => {
     renderLeaderboard();
     renderHistoryLog();
     _updateRoundDisplay();
+    _renderBackToLobbyBtn();
 
     const _isSpectator = typeof Spectator !== 'undefined' && Spectator.isSpectator();
 
@@ -188,6 +189,54 @@ const UI = (() => {
     }
   }
 
+  let _chatSubscribed = false;  // guard: subscribe to Chat exactly once (listener persists across re-renders)
+
+  /* ---- BACK TO LOBBY ---- */
+  function _renderBackToLobbyBtn() {
+    const header = document.querySelector('#game-screen .game-header');
+    if (!header || document.getElementById('btn-back-to-lobby')) return;
+    const btn = document.createElement('button');
+    btn.id = 'btn-back-to-lobby';
+    btn.className = 'btn btn-secondary btn-sm';
+    btn.innerHTML = '← Lobby';
+    btn.title = 'Leave this game and return to the lobby';
+    btn.addEventListener('click', _confirmBackToLobby);
+    header.prepend(btn);
+  }
+
+  function _confirmBackToLobby() {
+    const inRoom = typeof Rooms !== 'undefined' && Rooms.isInRoom();
+    const isSpec = typeof Spectator !== 'undefined' && Spectator.isSpectator();
+    const message = (inRoom || isSpec)
+      ? 'Leave the room and return to the lobby? You will exit this game.'
+      : 'Return to the lobby? The current game will end.';
+    if (!window.confirm(message)) return;
+
+    // Tear down all live modules so nothing keeps polling/listening in the background
+    try { if (typeof Chat        !== 'undefined') Chat.destroy(); }         catch (e) {}
+    try { if (typeof Reactions   !== 'undefined') Reactions.destroy(); }    catch (e) {}
+    try { if (typeof TurnFlow    !== 'undefined') TurnFlow.destroy(); }     catch (e) {}
+    try { if (typeof HostControls!== 'undefined') HostControls.destroy(); } catch (e) {}
+    try { if (typeof Timer       !== 'undefined') Timer.stop(); }           catch (e) {}
+
+    if (inRoom || isSpec) {
+      // Multiplayer: leave the room, clear the session, then reload to a fresh
+      // lobby. A reload guarantees a clean reset of all module state.
+      const finish = () => window.location.reload();
+      try {
+        if (isSpec && typeof Spectator !== 'undefined') Spectator.destroy();
+        if (inRoom && typeof Rooms !== 'undefined') {
+          const res = Rooms.leaveRoom();
+          if (res && typeof res.then === 'function') { res.then(finish).catch(finish); return; }
+        }
+      } catch (e) { /* fall through */ }
+      finish();
+    } else {
+      // Local game: soft return to the lobby
+      if (typeof Game !== 'undefined') Game.returnToLobby();
+    }
+  }
+
   function _renderChatPanel() {
     // Ensure chat column exists
     let chatCol = document.getElementById('game-chat-col');
@@ -244,9 +293,12 @@ const UI = (() => {
       panel.classList.toggle('chat-panel-collapsed');
     });
 
-    // Subscribe to incoming messages
-    if (typeof Chat !== 'undefined') {
+    // Subscribe to incoming messages — only once. The listener persists across
+    // panel re-renders and resolves #chat-messages at call time, so a single
+    // subscription keeps working even after the panel DOM is rebuilt.
+    if (typeof Chat !== 'undefined' && !_chatSubscribed) {
       Chat.onMessage(msg => _appendChatMessage(msg));
+      _chatSubscribed = true;
     }
 
     // Mobile floating button
