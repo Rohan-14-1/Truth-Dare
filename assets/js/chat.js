@@ -27,7 +27,11 @@ const Chat = (() => {
     console.log('[Chat] init — roomCode:', roomCode);
     _destroy();
     _roomCode    = roomCode;
-    _listeners   = [];
+    // NOTE: do NOT reset _listeners here. The UI subscribes via Chat.onMessage()
+    // during renderGameScreen, which runs BEFORE Chat.init() in game.js. Wiping
+    // listeners on init silently disabled ALL incoming-message rendering (the chat
+    // looked dead). Subscriptions are UI-lifetime and must survive re-init; the
+    // _seenIds reset below lets stored history re-deliver into the fresh panel.
     _unreadCount = 0;
     _seenIds     = new Set();
 
