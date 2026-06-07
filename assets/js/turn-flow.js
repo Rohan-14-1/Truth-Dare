@@ -160,6 +160,7 @@ const TurnFlow = (() => {
       answererAnswer:    null,
       askerJudgment:     null,
       turnNumber:        1,
+      turnsDone:         0,
       roundsDone:        0
     };
 
@@ -215,6 +216,11 @@ const TurnFlow = (() => {
     // Pull the authoritative cumulative scores into this tab's Players list so the
     // leaderboard reflects EVERY player's points — not just the ones this tab judged.
     _syncScoresFromRoom();
+
+    // Keep the "Round X / Y" badge in sync with the turn engine's own progress.
+    // The header badge normally reads Game.getCurrentRound(), which TurnFlow never
+    // advances — so without this it was frozen at 1.
+    _updateRoundBadge(state);
 
     // Self-heal: these phases REQUIRE an answerer. If the incoming state is
     // missing it (e.g. a stale/partial sync arrived out of order), re-read the
@@ -568,8 +574,13 @@ const TurnFlow = (() => {
     // Only the currentAsker auto-advances to prevent race conditions
     if (_myId === state.currentAsker) {
       setTimeout(async () => {
-        _roundsDone = (state.roundsDone || 0) + 1;
-        if (_roundsDone >= _totalRounds) {
+        // Count total turns played. One ROUND = every player has taken a turn,
+        // i.e. (player count) turns. The game ends after _totalRounds full cycles.
+        const playersCount = Math.max(_players.length, 1);
+        const turnsDone    = (state.turnsDone || 0) + 1;
+        _roundsDone        = Math.floor(turnsDone / playersCount);
+
+        if (turnsDone >= _totalRounds * playersCount) {
           _endGame();
           return;
         }
@@ -586,6 +597,7 @@ const TurnFlow = (() => {
           answererAnswer:    null,
           askerJudgment:     null,
           turnNumber:        (state.turnNumber || 1) + 1,
+          turnsDone:         turnsDone,
           roundsDone:        _roundsDone
         });
       }, 3000);
@@ -660,6 +672,20 @@ const TurnFlow = (() => {
    * every other tab's leaderboard would stay stuck at the points it personally
    * awarded, making it look like only one player ever scores.
    */
+  /**
+   * Update the "Round X / Y" header badge from the synced turn state. One round =
+   * every player taking a turn (player-count turns), so the badge only advances
+   * once all players have played, and the game ends after _totalRounds cycles.
+   */
+  function _updateRoundBadge(state) {
+    const el = document.getElementById('round-display');
+    if (!el) return;
+    const playersCount = Math.max(_players.length, 1);
+    const turnsDone    = state.turnsDone || 0;
+    const current      = Math.min(Math.floor(turnsDone / playersCount) + 1, _totalRounds);
+    el.innerHTML = `Round <span>${current}</span> / ${_totalRounds}`;
+  }
+
   function _syncScoresFromRoom() {
     try {
       // Firebase mode: read the authoritative players node
