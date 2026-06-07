@@ -212,6 +212,10 @@ const TurnFlow = (() => {
     const main = document.getElementById('game-main-content');
     if (!main) { console.warn('[TurnFlow] #game-main-content not found'); return; }
 
+    // Pull the authoritative cumulative scores into this tab's Players list so the
+    // leaderboard reflects EVERY player's points — not just the ones this tab judged.
+    _syncScoresFromRoom();
+
     // Self-heal: these phases REQUIRE an answerer. If the incoming state is
     // missing it (e.g. a stale/partial sync arrived out of order), re-read the
     // authoritative local state once instead of rendering a broken "undefined"
@@ -648,6 +652,44 @@ const TurnFlow = (() => {
   /* ══════════════════════════════════════════════════
      HELPERS
   ══════════════════════════════════════════════════ */
+
+  /**
+   * Read cumulative per-player scores from the shared store (Firebase players or
+   * the localStorage room data) and apply them as ABSOLUTE values onto this tab's
+   * Players objects. Scores are awarded by the judging tab only; without this sync
+   * every other tab's leaderboard would stay stuck at the points it personally
+   * awarded, making it look like only one player ever scores.
+   */
+  function _syncScoresFromRoom() {
+    try {
+      // Firebase mode: read the authoritative players node
+      if (!_isLocalMode && _db) {
+        _db.ref(`rooms/${_roomCode}/players`).once('value', snap => {
+          const obj = snap.val() || {};
+          let changed = false;
+          Object.values(obj).forEach(p => {
+            if (!p || p.id == null) return;
+            const local = Players.getById(p.id);
+            if (local && typeof p.score === 'number' && local.score !== p.score) {
+              local.score = p.score; changed = true;
+            }
+          });
+          if (changed && typeof UI !== 'undefined') UI.renderLeaderboard?.();
+        });
+        return;
+      }
+
+      // Local mode: read scores from the shared room data in localStorage
+      const data = JSON.parse(localStorage.getItem(`truth-dare-room-${_roomCode}`) || '{}');
+      const arr  = Array.isArray(data.players) ? data.players : Object.values(data.players || {});
+      arr.forEach(p => {
+        if (!p || p.id == null) return;
+        const local = Players.getById(p.id);
+        if (local && typeof p.score === 'number') local.score = p.score;
+      });
+    } catch (e) { /* ignore — leaderboard just keeps its current values */ }
+  }
+
   function _updateAvatarBorders(state) {
     document.querySelectorAll('.player-avatar').forEach(av => {
       av.classList.remove('asker-turn', 'answerer-turn');
