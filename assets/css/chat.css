@@ -11,7 +11,9 @@
 .chat-panel {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
+  /* Balanced card height: scales with the viewport but never becomes a tall,
+     empty full-height strip. Sits neatly alongside the sidebar cards. */
+  height: clamp(360px, calc(100vh - 150px), 600px);
   position: sticky;
   top: var(--sp-xl);
   background: rgba(10, 10, 30, 0.85);
@@ -62,6 +64,16 @@
 
 .chat-messages::-webkit-scrollbar { width: 3px; }
 .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+/* Empty-state hint — shown only when no messages exist yet */
+.chat-messages:empty::before {
+  content: "💬 No messages yet — say hi!";
+  margin: auto;
+  text-align: center;
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  opacity: 0.55;
+}
 
 /* ── Message Bubbles ── */
 .chat-msg {
