@@ -1,0 +1,17 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      "$roomCode": {
+        ".read": true,
+        ".write": true,
+
+        "reactions": {
+          ".indexOn": ["timestamp"]
+        }
+      }
+    }
+  }
+}
