@@ -420,6 +420,7 @@ const UI = (() => {
       }
 
     } else {
+      const initials = msg.playerName ? msg.playerName.substring(0, 2).toUpperCase() : '?';
       div.innerHTML = `
         <div class="chat-msg-header">
           <div class="chat-msg-avatar" style="background:${msg.playerColor || '#6366f1'}">${initials}</div>
@@ -435,7 +436,7 @@ const UI = (() => {
   }
 
   function _escapeHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   function _renderEmojiBar() {

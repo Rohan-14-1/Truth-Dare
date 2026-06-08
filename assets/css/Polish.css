@@ -1,0 +1,328 @@
+/* ============================================
+   POLISH.CSS — Refined visual layer (loaded LAST)
+   Elevates depth, glass, buttons, typography and
+   micro-interactions on top of the existing theme.
+   Purely cosmetic — no layout/structure changes.
+   ============================================ */
+
+/* ---------- Atmosphere: a soft aurora behind the lobby ---------- */
+#lobby-screen {
+  position: relative;
+}
+#lobby-screen::before {
+  content: '';
+  position: absolute;
+  inset: -10% -20% auto -20%;
+  height: 60%;
+  background:
+    radial-gradient(60% 80% at 30% 0%, rgba(79, 172, 254, 0.10) 0%, transparent 70%),
+    radial-gradient(55% 80% at 75% 10%, rgba(245, 87, 108, 0.09) 0%, transparent 70%),
+    radial-gradient(50% 70% at 50% 0%, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+  filter: blur(8px);
+  pointer-events: none;
+  z-index: 0;
+}
+#lobby-screen > * { position: relative; z-index: 1; }
+
+/* ---------- Lobby hero: richer, more confident title ---------- */
+.lobby-title-new {
+  letter-spacing: -0.02em;
+  filter: drop-shadow(0 6px 28px rgba(168, 85, 247, 0.25));
+}
+.lobby-masks {
+  filter: drop-shadow(0 8px 24px rgba(245, 87, 108, 0.35));
+}
+.lobby-subtitle {
+  max-width: 540px;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--clr-text-secondary);
+}
+
+/* ---------- Unified glass cards ---------- */
+.card,
+.leaderboard-panel,
+.history-panel,
+.host-controls-card,
+.chat-panel,
+.players-card {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%),
+    var(--clr-bg-card);
+  border: 1px solid var(--clr-border-light);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Section headings inside panels */
+.leaderboard-panel h4,
+.history-panel h4,
+.host-controls-card h4,
+.chat-header h4 {
+  letter-spacing: 0.01em;
+}
+
+/* ---------- Room cards: top accent + lift ---------- */
+.room-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-spring),
+              border-color var(--transition-base),
+              box-shadow var(--transition-base);
+}
+.room-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--clr-truth), var(--clr-accent), var(--clr-dare));
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+.room-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--clr-border-accent);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(168,85,247,0.18);
+}
+.room-card:hover::before { opacity: 1; }
+.room-card-icon-wrap {
+  transition: transform var(--transition-spring);
+}
+.room-card:hover .room-card-icon-wrap {
+  transform: scale(1.08) rotate(-4deg);
+}
+
+/* ---------- Primary call-to-action buttons ---------- */
+.btn-create-new-room,
+.btn-start-game,
+.btn-primary,
+.settings-save-btn {
+  position: relative;
+  letter-spacing: 0.01em;
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.28);
+  transition: transform var(--transition-spring),
+              box-shadow var(--transition-base),
+              filter var(--transition-base);
+}
+.btn-create-new-room:hover:not(:disabled),
+.btn-start-game:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.settings-save-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: 0 14px 36px rgba(168, 85, 247, 0.42);
+}
+.btn-start-game {
+  background: linear-gradient(135deg, var(--clr-accent) 0%, #7c3aed 50%, var(--clr-dare) 120%);
+}
+.btn-start-game:disabled {
+  filter: grayscale(0.4) brightness(0.8);
+  box-shadow: none;
+}
+
+/* Secondary / outline buttons */
+.btn-settings-outline,
+.btn-secondary {
+  transition: transform var(--transition-fast),
+              background var(--transition-base),
+              border-color var(--transition-base);
+}
+.btn-settings-outline:hover,
+.btn-secondary:hover { transform: translateY(-1px); }
+
+/* Add-player & join buttons get a subtle accent glow on hover */
+.btn-add-player:hover,
+.btn-join-go:hover {
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.35);
+}
+
+/* ---------- Inputs: clearer focus ---------- */
+.input-field:focus,
+.join-code-input:focus,
+#rounds-input:focus {
+  border-color: var(--clr-accent) !important;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+  outline: none;
+}
+
+/* ---------- Feature badges: tidy hover ---------- */
+.feature-badge-item {
+  transition: transform var(--transition-base), background var(--transition-base);
+  border-radius: var(--radius-lg);
+}
+.feature-badge-item:hover {
+  transform: translateY(-3px);
+}
+.fb-icon {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Leaderboard: stronger podium ---------- */
+.leaderboard-list li:first-child {
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.35), 0 4px 18px rgba(251,191,36,0.12);
+}
+.leaderboard-item,
+.leaderboard-list li {
+  transition: transform var(--transition-fast), background var(--transition-base);
+}
+.leaderboard-list li:hover { transform: translateX(2px); }
+
+/* ---------- Round badge: crisp pill ---------- */
+.round-badge {
+  border: 1px solid var(--clr-border-light);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  letter-spacing: 0.02em;
+}
+.round-badge span { color: var(--clr-gold); font-weight: 800; }
+
+/* ---------- Settings modal refinement ---------- */
+.settings-modal {
+  border: 1px solid var(--clr-border-light);
+  box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.difficulty-chip { transition: transform var(--transition-fast), background var(--transition-base), border-color var(--transition-base); }
+.difficulty-chip:hover { transform: translateY(-1px); }
+
+/* ---------- Gentle staggered reveal on lobby load ---------- */
+@keyframes polish-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#lobby-screen.active .room-card,
+#lobby-screen.active .players-card,
+#lobby-screen.active .lobby-actions,
+#lobby-screen.active .feature-badge-item {
+  animation: polish-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+#lobby-screen.active .room-card:nth-child(1) { animation-delay: 0.05s; }
+#lobby-screen.active .room-card:nth-child(2) { animation-delay: 0.12s; }
+#lobby-screen.active .players-card           { animation-delay: 0.18s; }
+#lobby-screen.active .lobby-actions          { animation-delay: 0.24s; }
+#lobby-screen.active .feature-badge-item:nth-child(1) { animation-delay: 0.30s; }
+#lobby-screen.active .feature-badge-item:nth-child(2) { animation-delay: 0.36s; }
+#lobby-screen.active .feature-badge-item:nth-child(3) { animation-delay: 0.42s; }
+
+/* ---------- Refined scrollbars everywhere ---------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168,85,247,0.4) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(168,85,247,0.5), rgba(245,87,108,0.45));
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Respect reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  #lobby-screen.active .room-card,
+  #lobby-screen.active .players-card,
+  #lobby-screen.active .lobby-actions,
+  #lobby-screen.active .feature-badge-item {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   MOBILE RESPONSIVENESS — refines all screens on small viewports
+   (loaded last, so these win). Touch-friendly, no horizontal scroll.
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* Container breathing room */
+  #app-container { padding-left: 14px; padding-right: 14px; }
+
+  /* Decorative floating cards add clutter on phones */
+  .deco-cards-wrapper { display: none !important; }
+
+  /* Lobby hero scales down */
+  .lobby-title-new { font-size: clamp(2.1rem, 11vw, 3rem); }
+  .lobby-subtitle  { font-size: 0.95rem; padding: 0 6px; }
+  .lobby-masks     { font-size: 2.6rem; }
+  #lobby-screen::before { height: 40%; }
+
+  /* Lobby cards & actions stack full width */
+  .room-cards-grid    { grid-template-columns: 1fr !important; gap: 14px; }
+  .feature-badges-row { grid-template-columns: 1fr !important; gap: 12px; }
+  .players-card-top   { flex-direction: column; align-items: stretch; gap: 12px; }
+  .player-input-area  { width: 100%; }
+  .player-input-area .input-field { flex: 1; }
+  .lobby-actions      { flex-direction: column; }
+  .lobby-actions .btn { width: 100%; }
+
+  /* Game header wraps cleanly */
+  .game-header { flex-wrap: wrap; gap: 8px; row-gap: 8px; }
+  .round-badge { font-size: 0.8rem; padding: 6px 12px; }
+  #btn-back-to-lobby { font-size: 0.8rem; }
+
+  /* Turn cards & phases */
+  .q-card-full   { padding: var(--sp-xl) var(--sp-lg); max-width: 100%; }
+  .qcf-question  { font-size: clamp(1.25rem, 6vw, 1.7rem); }
+  .phase-title   { font-size: clamp(1.4rem, 7vw, 2rem); }
+  .challenger-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 10px; }
+  .question-source-btns, .asker-verdict, .peer-votes { max-width: 100%; }
+
+  /* Answer media buttons go full width and stack */
+  .answer-media-row { flex-direction: column; }
+  .answer-media-btn { width: 100%; min-height: 44px; }
+  .answer-input     { font-size: 1rem; }   /* >=16px prevents iOS zoom-on-focus */
+
+  /* Touch-friendly primary buttons & inputs */
+  .btn-lg            { min-height: 50px; }
+  .input-field, .join-code-input, .chat-input, #rounds-input { font-size: 16px; }
+
+  /* Floating chat sized to the viewport */
+  .chat-panel.chat-panel-open {
+    width: calc(100vw - 24px) !important;
+    max-width: 380px;
+    height: min(70vh, 520px) !important;
+    right: 12px !important;
+    bottom: 80px !important;
+  }
+  .chat-float-btn { bottom: 18px; right: 18px; }
+
+  /* Settings modal fills the screen comfortably */
+  .settings-modal {
+    width: 94vw !important;
+    max-width: 460px;
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+
+  /* Winner screen */
+  .winner-name  { font-size: clamp(2rem, 10vw, 3rem); }
+  .winner-crown { font-size: 3.5rem; }
+  .final-standing-item { padding: 10px 12px; }
+}
+
+@media (max-width: 480px) {
+  #app-container { padding-left: 10px; padding-right: 10px; }
+
+  .lobby-title-new { font-size: clamp(1.9rem, 12vw, 2.4rem); }
+  .room-card        { padding: var(--sp-lg); }
+  .players-title    { font-size: 1rem; }
+
+  /* Top player/avatar bar: shrink so it never overflows */
+  .tw-avatar { width: 56px; height: 56px; font-size: 1.3rem; }
+
+  /* Leaderboard / panels tighten up */
+  .leaderboard-panel, .history-panel, .host-controls-card { padding: var(--sp-md); }
+
+  /* Verdict buttons stack */
+  .verdict-btns { flex-direction: column; width: 100%; }
+  .verdict-btns .btn { width: 100%; }
+
+  /* Emoji reaction bar wraps neatly */
+  .emoji-reaction-bar { justify-content: center; }
+}
+
+/* Prevent any accidental horizontal scrolling on phones */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden; max-width: 100%; }
+  .game-main, .phase-picking, .phase-choosing, .phase-questioning,
+  .phase-displaying, .phase-result { max-width: 100%; }
+}
