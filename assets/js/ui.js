@@ -283,6 +283,17 @@ const UI = (() => {
         if (t.closest('#chat-attach-btn'))    { e.preventDefault(); const fi = document.getElementById('chat-file-input'); if (fi) fi.click(); return; }
         if (t.closest('#chat-voice-btn'))     { e.preventDefault(); _toggleChatVoice(t.closest('#chat-voice-btn')); return; }
         if (t.closest('#btn-chat-collapse'))  { const p = document.getElementById('chat-panel'); if (p) p.classList.toggle('chat-panel-collapsed'); return; }
+        // View shared media full-size (expand button or tapping a photo)
+        const expandHit = t.closest('.chat-media-expand');
+        const imgHit    = t.closest('img.chat-media');
+        if (expandHit || imgHit) {
+          const bubble = (expandHit || imgHit).closest('.chat-media-bubble');
+          const vid = bubble && bubble.querySelector('video.chat-media');
+          const img = bubble && bubble.querySelector('img.chat-media');
+          if (vid)      _openMediaLightbox('video', vid.src);
+          else if (img) _openMediaLightbox('image', img.src);
+          return;
+        }
       });
 
       document.addEventListener('keydown', (e) => {
@@ -323,6 +334,38 @@ const UI = (() => {
 
     // Mobile floating button
     _renderChatFloatButton();
+  }
+
+  /** Open a full-screen viewer for a shared photo or video. */
+  function _openMediaLightbox(type, src) {
+    if (!src) return;
+    let overlay = document.getElementById('media-lightbox');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'media-lightbox';
+      overlay.className = 'media-lightbox';
+      overlay.innerHTML = `<button class="media-lightbox-close" title="Close (Esc)">×</button><div class="media-lightbox-content"></div>`;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.closest('.media-lightbox-close')) _closeMediaLightbox();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') _closeMediaLightbox(); });
+    }
+    const content = overlay.querySelector('.media-lightbox-content');
+    content.innerHTML = type === 'video'
+      ? `<video src="${src}" controls autoplay playsinline class="media-lightbox-media"></video>`
+      : `<img src="${src}" alt="full size" class="media-lightbox-media">`;
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function _closeMediaLightbox() {
+    const overlay = document.getElementById('media-lightbox');
+    if (!overlay) return;
+    overlay.classList.remove('open');
+    const c = overlay.querySelector('.media-lightbox-content');
+    if (c) c.innerHTML = ''; // stop any playing video
+    document.body.style.overflow = '';
   }
 
   /** Read the chat textarea (by id, at call time) and send a normal message. */
@@ -395,9 +438,9 @@ const UI = (() => {
       if (!msg.dataUrl) {
         mediaHtml = '<div class="chat-media-missing">📎 Media unavailable</div>';
       } else if (msgType === 'image') {
-        mediaHtml = `<img class="chat-media" src="${msg.dataUrl}" alt="shared photo" loading="lazy">`;
+        mediaHtml = `<div class="chat-media-wrap"><img class="chat-media" src="${msg.dataUrl}" alt="shared photo" loading="lazy"><button class="chat-media-expand" title="View full size">⤢</button></div>`;
       } else if (msgType === 'video') {
-        mediaHtml = `<video class="chat-media" src="${msg.dataUrl}" controls preload="metadata"></video>`;
+        mediaHtml = `<div class="chat-media-wrap"><video class="chat-media" src="${msg.dataUrl}" preload="metadata"></video><button class="chat-media-expand" title="Play / view full size">⤢</button></div>`;
       } else {
         mediaHtml = `<audio class="chat-media-audio" src="${msg.dataUrl}" controls preload="metadata"></audio>`;
       }
@@ -409,15 +452,6 @@ const UI = (() => {
           <span class="chat-msg-time">${time}</span>
         </div>
         <div class="chat-msg-bubble chat-media-bubble${msg.official ? ' chat-answer' : ''}">${mediaHtml}</div>`;
-
-      if (msgType === 'image' && msg.dataUrl) {
-        // open full-size on click
-        setTimeout(() => {
-          div.querySelector('img.chat-media')?.addEventListener('click', () => {
-            const w = window.open(); if (w) w.document.write(`<img src="${msg.dataUrl}" style="max-width:100%">`);
-          });
-        }, 0);
-      }
 
     } else {
       const initials = msg.playerName ? msg.playerName.substring(0, 2).toUpperCase() : '?';
