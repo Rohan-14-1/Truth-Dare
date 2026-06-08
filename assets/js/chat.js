@@ -114,60 +114,32 @@ const Chat = (() => {
 
   function sendAnswer(text)       { return send(text, 'answer'); }
 
-  /* ─── Media (photo / video) ───────────────────────────────────────────
-     Bytes are stored in IndexedDB (large quota, shared across same-browser
-     tabs); only a lightweight reference travels through the chat message, so
-     localStorage never overflows. NOTE: the blob lives in THIS browser's
-     IndexedDB — true cross-DEVICE media needs Firebase Storage (see sendMedia).
+  /* ─── Media (photo / video / voice) ──────────────────────────────────────
+     Media travels INSIDE the message as a compressed base64 data URL, so it
+     syncs cross-device on the free Firebase plan (no Storage / no card needed).
+     A size ceiling keeps the Realtime Database happy: photos compress to fit,
+     short voice clips fit easily, and oversized video is rejected with a note.
   ──────────────────────────────────────────────────────────────────────── */
-  const _MEDIA_DB = 'truth-dare-media';
-  const _MEDIA_ST = 'media';
-  let   _dbPromise = null;
-  const MAX_VIDEO_BYTES = 25 * 1024 * 1024; // 25 MB cap for video
+  const MAX_MEDIA_B64 = 900 * 1024; // ~900 KB base64 per message
 
-  function _openMediaDB() {
-    if (_dbPromise) return _dbPromise;
-    _dbPromise = new Promise((resolve, reject) => {
-      if (!('indexedDB' in window)) { reject(new Error('IndexedDB unavailable')); return; }
-      const req = indexedDB.open(_MEDIA_DB, 1);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(_MEDIA_ST)) db.createObjectStore(_MEDIA_ST);
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror   = () => reject(req.error);
+  function _blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload  = () => resolve(r.result);
+      r.onerror = () => reject(r.error || new Error('read failed'));
+      r.readAsDataURL(blob);
     });
-    return _dbPromise;
   }
 
-  function _mediaPut(key, blob) {
-    return _openMediaDB().then(db => new Promise((resolve, reject) => {
-      const tx = db.transaction(_MEDIA_ST, 'readwrite');
-      tx.objectStore(_MEDIA_ST).put(blob, key);
-      tx.oncomplete = () => resolve(key);
-      tx.onerror    = () => reject(tx.error);
-    }));
-  }
-
-  function _mediaGet(key) {
-    return _openMediaDB().then(db => new Promise((resolve, reject) => {
-      const tx = db.transaction(_MEDIA_ST, 'readonly');
-      const r  = tx.objectStore(_MEDIA_ST).get(key);
-      r.onsuccess = () => resolve(r.result || null);
-      r.onerror   = () => reject(r.error);
-    }));
-  }
-
-  // Downscale + re-encode an image to keep it small and fast to render.
-  function _compressImage(file) {
+  // Downscale + re-encode an image to keep it small enough to embed.
+  function _compressImage(file, maxDim = 1000, quality = 0.7) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
-        const MAX = 1280;
         let { width, height } = img;
-        if (width > MAX || height > MAX) {
-          const scale = Math.min(MAX / width, MAX / height);
+        if (width > maxDim || height > maxDim) {
+          const scale = Math.min(maxDim / width, maxDim / height);
           width  = Math.round(width  * scale);
           height = Math.round(height * scale);
         }
@@ -175,7 +147,7 @@ const Chat = (() => {
         canvas.width = width; canvas.height = height;
         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
         URL.revokeObjectURL(url);
-        canvas.toBlob(b => b ? resolve(b) : reject(new Error('compress failed')), 'image/jpeg', 0.8);
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('compress failed')), 'image/jpeg', quality);
       };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
       img.src = url;
@@ -183,35 +155,47 @@ const Chat = (() => {
   }
 
   /**
-   * Send a photo or video. Returns { success, error? }.
-   * @param {File} file
+   * Send a photo, video, or voice clip. Returns { success, error? }.
+   * @param {Blob|File} fileOrBlob
+   * @param {{ type?: 'audio', official?: boolean }} [opts]
    */
-  async function sendMedia(file) {
-    if (!file || !_roomCode) return { success: false, error: 'Nothing to send.' };
-    const isImage = file.type.startsWith('image/');
-    const isVideo = file.type.startsWith('video/');
-    if (!isImage && !isVideo) return { success: false, error: 'Only photos and videos can be sent.' };
+  async function sendMedia(fileOrBlob, opts = {}) {
+    if (!fileOrBlob || !_roomCode) return { success: false, error: 'Nothing to send.' };
 
-    let blob = file;
-    let mime = file.type;
+    const mime    = fileOrBlob.type || (opts.type === 'audio' ? 'audio/webm' : '');
+    const isImage = mime.startsWith('image/');
+    const isVideo = mime.startsWith('video/');
+    const isAudio = opts.type === 'audio' || mime.startsWith('audio/');
+    if (!isImage && !isVideo && !isAudio) {
+      return { success: false, error: 'Only photos, videos and voice clips can be sent.' };
+    }
+
+    // Compress images; convert everything to a base64 data URL.
+    let dataUrl;
     try {
-      if (isImage) {
-        blob = await _compressImage(file);
-        mime = blob.type || 'image/jpeg';
-      } else if (file.size > MAX_VIDEO_BYTES) {
-        return { success: false, error: 'Video is too large (max 25 MB).' };
+      let blob = fileOrBlob;
+      if (isImage) blob = await _compressImage(fileOrBlob);
+      dataUrl = await _blobToDataUrl(blob);
+
+      // If an image is still too big, compress harder before giving up.
+      if (isImage && dataUrl.length > MAX_MEDIA_B64) {
+        blob = await _compressImage(fileOrBlob, 720, 0.5);
+        dataUrl = await _blobToDataUrl(blob);
       }
     } catch (e) {
-      blob = file; // compression failed — store the original
+      return { success: false, error: 'Could not process the file.' };
     }
 
-    const mediaId = `media_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    try {
-      await _mediaPut(mediaId, blob); // commit BEFORE announcing, so other tabs can read it
-    } catch (e) {
-      return { success: false, error: 'Could not store the file on this device.' };
+    if (dataUrl.length > MAX_MEDIA_B64) {
+      return {
+        success: false,
+        error: isVideo
+          ? 'Video is too large to share on the free plan. Try a photo or a short voice note.'
+          : 'That file is too large to share. Try something smaller.'
+      };
     }
 
+    const type    = isImage ? 'image' : isVideo ? 'video' : 'audio';
     const myId    = sessionStorage.getItem('myPlayerId')   || 'unknown';
     const myName  = sessionStorage.getItem('myPlayerName') || 'You';
     const players = typeof Players !== 'undefined' ? Players.getAll() : [];
@@ -222,28 +206,58 @@ const Chat = (() => {
       playerId:    myId,
       playerName:  myName,
       playerColor: me.color || '#6366f1',
-      type:        isImage ? 'image' : 'video',
-      mediaId,
-      mime,
-      fileName:    file.name || '',
+      type,
+      dataUrl,
+      mime:        mime || (type === 'audio' ? 'audio/webm' : ''),
+      official:    !!opts.official,
       text:        '',
       timestamp:   Date.now()
     };
 
     if (!_isLocal && _chatRef) {
-      // Online (real Firebase) note: the blob is only in THIS device's IndexedDB,
-      // so remote peers would see a placeholder. For true cross-device media,
-      // upload `blob` to Firebase Storage here and store the download URL on msg.
-      try { await _chatRef.push(msg); return { success: true }; } catch { /* fall through */ }
+      try { await _chatRef.push(msg); return { success: true }; }
+      catch (err) {
+        console.error('[Chat] ❌ Could not send media to Firebase:', err && err.message ? err.message : err);
+        return { success: false, error: 'Could not send — check your connection / database rules.' };
+      }
     }
     _appendLocal(msg);
     _deliver(msg);
     return { success: true };
   }
 
-  /** Retrieve a stored media blob by id. @returns {Promise<Blob|null>} */
-  function getMedia(mediaId) {
-    return _mediaGet(mediaId).catch(() => null);
+  /** Back-compat no-op (media now travels inline as a data URL). */
+  function getMedia() { return Promise.resolve(null); }
+
+  /* ─── Voice recording ─── */
+  let _recorder = null;
+  let _recChunks = [];
+  let _recStream = null;
+
+  function isVoiceSupported() {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  }
+
+  async function startVoice() {
+    if (!isVoiceSupported()) throw new Error('unsupported');
+    _recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _recChunks = [];
+    _recorder  = new MediaRecorder(_recStream);
+    _recorder.ondataavailable = e => { if (e.data && e.data.size) _recChunks.push(e.data); };
+    _recorder.start();
+  }
+
+  function stopVoice() {
+    return new Promise(resolve => {
+      if (!_recorder) { resolve(null); return; }
+      _recorder.onstop = () => {
+        const blob = new Blob(_recChunks, { type: (_recorder && _recorder.mimeType) || 'audio/webm' });
+        if (_recStream) _recStream.getTracks().forEach(t => t.stop());
+        _recorder = null; _recStream = null; _recChunks = [];
+        resolve(blob);
+      };
+      try { _recorder.stop(); } catch { resolve(null); }
+    });
   }
 
   function sendSystem(text) {
@@ -310,5 +324,5 @@ const Chat = (() => {
     _seenIds.clear();
   }
 
-  return { init, send, sendAnswer, sendMedia, getMedia, sendSystem, onMessage, setChatOpen, getUnreadCount, destroy };
+  return { init, send, sendAnswer, sendMedia, getMedia, isVoiceSupported, startVoice, stopVoice, sendSystem, onMessage, setChatOpen, getUnreadCount, destroy };
 })();

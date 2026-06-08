@@ -190,6 +190,7 @@ const UI = (() => {
   }
 
   let _chatSubscribed = false;  // guard: subscribe to Chat exactly once (listener persists across re-renders)
+  let _chatInputWired = false;  // guard: wire chat-box input handlers exactly once (delegated, survives re-renders)
 
   /* ---- BACK TO LOBBY ---- */
   function _renderBackToLobbyBtn() {
@@ -258,6 +259,7 @@ const UI = (() => {
         <div class="chat-input-row">
           <input type="file" id="chat-file-input" accept="image/*,video/*" style="display:none">
           <button class="chat-attach-btn" id="chat-attach-btn" title="Send a photo or video">📎</button>
+          <button class="chat-attach-btn chat-voice-btn" id="chat-voice-btn" title="Record a voice message">🎤</button>
           <textarea class="chat-input" id="chat-input" placeholder="Type a message… (Enter to send)" rows="1" maxlength="300"></textarea>
           <button class="chat-send-btn" id="chat-send-btn" title="Send">➤</button>
         </div>
@@ -267,51 +269,49 @@ const UI = (() => {
     // Emoji bar
     if (typeof Reactions !== 'undefined') Reactions.renderEmojiBar('emoji-bar');
 
-    // Send message
-    const input  = document.getElementById('chat-input');
-    const sendBtn = document.getElementById('chat-send-btn');
+    // Chat-box interactions are wired ONCE via event delegation on the document.
+    // This survives any rebuild of the chat panel's HTML — binding directly to the
+    // send button/textarea would silently break if the panel is ever re-rendered,
+    // which is why typed messages could stop working while incoming ones still showed.
+    if (!_chatInputWired) {
+      _chatInputWired = true;
 
-    function _sendMsg(isAnswer) {
-      const txt = input.value.trim();
-      if (!txt) return;
-      input.value = '';
-      input.style.height = 'auto';
-      const type = isAnswer ? 'answer' : 'message';
-      if (typeof Chat !== 'undefined') Chat.send(txt, type);
-    }
+      document.addEventListener('click', (e) => {
+        const t = e.target;
+        if (!t || !t.closest) return;
+        if (t.closest('#chat-send-btn'))      { e.preventDefault(); _sendChatBoxMessage(); return; }
+        if (t.closest('#chat-attach-btn'))    { e.preventDefault(); const fi = document.getElementById('chat-file-input'); if (fi) fi.click(); return; }
+        if (t.closest('#chat-voice-btn'))     { e.preventDefault(); _toggleChatVoice(t.closest('#chat-voice-btn')); return; }
+        if (t.closest('#btn-chat-collapse'))  { const p = document.getElementById('chat-panel'); if (p) p.classList.toggle('chat-panel-collapsed'); return; }
+      });
 
-    sendBtn.addEventListener('click', () => _sendMsg(false));
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _sendMsg(false); }
-    });
-    input.addEventListener('input', () => {
-      input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 80) + 'px';
-    });
+      document.addEventListener('keydown', (e) => {
+        if (e.target && e.target.id === 'chat-input' && e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          _sendChatBoxMessage();
+        }
+      });
 
-    // Attach photo / video
-    const fileInput = document.getElementById('chat-file-input');
-    const attachBtn = document.getElementById('chat-attach-btn');
-    if (attachBtn && fileInput) {
-      attachBtn.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', async () => {
-        const file = fileInput.files && fileInput.files[0];
-        fileInput.value = ''; // allow re-selecting the same file later
+      document.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'chat-input') {
+          e.target.style.height = 'auto';
+          e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px';
+        }
+      });
+
+      document.addEventListener('change', (e) => {
+        if (!e.target || e.target.id !== 'chat-file-input') return;
+        const fi = e.target;
+        const file = fi.files && fi.files[0];
+        fi.value = '';
         if (!file || typeof Chat === 'undefined' || !Chat.sendMedia) return;
-        attachBtn.disabled = true;
-        attachBtn.textContent = '⏳';
-        let res;
-        try { res = await Chat.sendMedia(file); }
-        finally { attachBtn.disabled = false; attachBtn.textContent = '📎'; }
-        if (res && !res.success && res.error) window.alert(res.error);
+        const attachBtn = document.getElementById('chat-attach-btn');
+        if (attachBtn) { attachBtn.disabled = true; attachBtn.textContent = '⏳'; }
+        Promise.resolve(Chat.sendMedia(file))
+          .then(res => { if (res && !res.success && res.error) window.alert(res.error); })
+          .finally(() => { if (attachBtn) { attachBtn.disabled = false; attachBtn.textContent = '📎'; } });
       });
     }
-
-    // Collapse toggle
-    document.getElementById('btn-chat-collapse').addEventListener('click', () => {
-      const panel = document.getElementById('chat-panel');
-      panel.classList.toggle('chat-panel-collapsed');
-    });
 
     // Subscribe to incoming messages — only once. The listener persists across
     // panel re-renders and resolves #chat-messages at call time, so a single
@@ -323,6 +323,43 @@ const UI = (() => {
 
     // Mobile floating button
     _renderChatFloatButton();
+  }
+
+  /** Read the chat textarea (by id, at call time) and send a normal message. */
+  function _sendChatBoxMessage() {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    const txt = (input.value || '').trim();
+    if (!txt) return;
+    input.value = '';
+    input.style.height = 'auto';
+    if (typeof Chat !== 'undefined' && Chat.send) Chat.send(txt, 'message');
+  }
+
+  // Shared voice-record toggle. Click once to start, again to stop & send.
+  let _voiceRecording = false;
+  async function _toggleChatVoice(btn) {
+    if (typeof Chat === 'undefined' || !Chat.isVoiceSupported || !Chat.isVoiceSupported()) {
+      window.alert('Voice recording is not supported in this browser.');
+      return;
+    }
+    if (!_voiceRecording) {
+      try {
+        await Chat.startVoice();
+        _voiceRecording = true;
+        if (btn) { btn.classList.add('recording'); btn.textContent = '⏺'; btn.title = 'Stop & send'; }
+      } catch (e) {
+        window.alert('Could not access the microphone. Please allow mic permission.');
+      }
+    } else {
+      _voiceRecording = false;
+      if (btn) { btn.classList.remove('recording'); btn.textContent = '🎤'; btn.title = 'Record a voice message'; }
+      const blob = await Chat.stopVoice();
+      if (blob && blob.size) {
+        const res = await Chat.sendMedia(blob, { type: 'audio' });
+        if (res && !res.success && res.error) window.alert(res.error);
+      }
+    }
   }
 
   function _appendChatMessage(msg) {
@@ -350,37 +387,36 @@ const UI = (() => {
         </div>
         <div class="chat-msg-bubble chat-answer">${_escapeHtml(msg.text)}</div>`;
 
-    } else if (msgType === 'image' || msgType === 'video') {
-      // Photo / video — header + a media bubble whose blob loads asynchronously
-      // from the shared media store.
+    } else if (msgType === 'image' || msgType === 'video' || msgType === 'audio') {
+      // Photo / video / voice — media travels inline as a base64 data URL.
       const initials = msg.playerName ? msg.playerName.substring(0, 2).toUpperCase() : '?';
+      const officialTag = msg.official ? '<span class="chat-official-label">ANSWER</span>' : '';
+      let mediaHtml;
+      if (!msg.dataUrl) {
+        mediaHtml = '<div class="chat-media-missing">📎 Media unavailable</div>';
+      } else if (msgType === 'image') {
+        mediaHtml = `<img class="chat-media" src="${msg.dataUrl}" alt="shared photo" loading="lazy">`;
+      } else if (msgType === 'video') {
+        mediaHtml = `<video class="chat-media" src="${msg.dataUrl}" controls preload="metadata"></video>`;
+      } else {
+        mediaHtml = `<audio class="chat-media-audio" src="${msg.dataUrl}" controls preload="metadata"></audio>`;
+      }
       div.innerHTML = `
         <div class="chat-msg-header">
           <div class="chat-msg-avatar" style="background:${msg.playerColor || '#6366f1'}">${initials}</div>
           <span class="chat-msg-name">${msg.playerName || 'Player'}</span>
+          ${officialTag}
           <span class="chat-msg-time">${time}</span>
         </div>
-        <div class="chat-msg-bubble chat-media-bubble">
-          <div class="chat-media-loading">${msgType === 'image' ? '🖼 Loading photo…' : '🎬 Loading video…'}</div>
-        </div>`;
+        <div class="chat-msg-bubble chat-media-bubble${msg.official ? ' chat-answer' : ''}">${mediaHtml}</div>`;
 
-      if (typeof Chat !== 'undefined' && Chat.getMedia && msg.mediaId) {
-        Chat.getMedia(msg.mediaId).then(blob => {
-          const bubble = div.querySelector('.chat-media-bubble');
-          if (!bubble) return;
-          if (!blob) {
-            bubble.innerHTML = '<div class="chat-media-missing">📎 Media not available on this device</div>';
-            return;
-          }
-          const url = URL.createObjectURL(blob);
-          if (msgType === 'image') {
-            bubble.innerHTML = `<img class="chat-media" src="${url}" alt="shared photo" loading="lazy">`;
-            bubble.querySelector('img')?.addEventListener('click', () => window.open(url, '_blank'));
-          } else {
-            bubble.innerHTML = `<video class="chat-media" src="${url}" controls preload="metadata"></video>`;
-          }
-          container.scrollTop = container.scrollHeight;
-        }).catch(() => {});
+      if (msgType === 'image' && msg.dataUrl) {
+        // open full-size on click
+        setTimeout(() => {
+          div.querySelector('img.chat-media')?.addEventListener('click', () => {
+            const w = window.open(); if (w) w.document.write(`<img src="${msg.dataUrl}" style="max-width:100%">`);
+          });
+        }, 0);
       }
 
     } else {

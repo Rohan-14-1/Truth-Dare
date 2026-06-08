@@ -23,6 +23,7 @@ const TurnFlow = (() => {
   let _roundsDone    = 0;
   let _spectator     = false;
   let _db            = null;
+  let _answerRecording = false;
   let _stateRef      = null;
   let _pollInterval  = null;
   let _isLocalMode   = false;
@@ -437,11 +438,18 @@ const TurnFlow = (() => {
 
     let actionBlock = '';
     if (amAnswerer) {
+      const voiceBtn = (typeof Chat !== 'undefined' && Chat.isVoiceSupported && Chat.isVoiceSupported())
+        ? `<button class="answer-media-btn" id="answer-voice-btn" title="Record a voice answer">🎤 Voice</button>` : '';
       actionBlock = `
         <div class="answerer-block">
-          <p style="color:var(--clr-text-muted);margin-bottom:0.5rem">Type your answer below and submit:</p>
+          <p style="color:var(--clr-text-muted);margin-bottom:0.5rem">Type your answer below — or reply with a photo or voice clip:</p>
           <textarea id="answer-input" class="answer-input"
             placeholder="Type your answer here…" maxlength="400" rows="3"></textarea>
+          <div class="answer-media-row">
+            <input type="file" id="answer-file-input" accept="image/*,video/*" style="display:none">
+            <button class="answer-media-btn" id="answer-attach-btn" title="Send a photo or video">📎 Photo / Video</button>
+            ${voiceBtn}
+          </div>
           <button class="btn btn-primary btn-lg" id="btn-submit-answer">📩 Submit Answer</button>
         </div>`;
     } else if (amAsker) {
@@ -482,6 +490,46 @@ const TurnFlow = (() => {
           answererAnswer:    txt,
           turnPhase:         PHASES.JUDGING
         });
+      });
+
+      // Submit a photo/video answer
+      const fileInput = document.getElementById('answer-file-input');
+      const attachBtn = document.getElementById('answer-attach-btn');
+      attachBtn?.addEventListener('click', () => fileInput?.click());
+      fileInput?.addEventListener('change', async () => {
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.value = '';
+        if (!file || typeof Chat === 'undefined' || !Chat.sendMedia) return;
+        attachBtn.disabled = true; attachBtn.textContent = '⏳ Sending…';
+        const res = await Chat.sendMedia(file, { official: true });
+        attachBtn.disabled = false; attachBtn.textContent = '📎 Photo / Video';
+        if (res && res.success) {
+          const label = file.type.startsWith('video/') ? '🎬 Video answer' : '📷 Photo answer';
+          await _updateState({ answererSubmitted: true, answererAnswer: label, turnPhase: PHASES.JUDGING });
+        } else if (res && res.error) {
+          window.alert(res.error);
+        }
+      });
+
+      // Submit a voice answer (toggle record → stop & send)
+      const voiceBtn = document.getElementById('answer-voice-btn');
+      voiceBtn?.addEventListener('click', async () => {
+        if (!Chat.isVoiceSupported || !Chat.isVoiceSupported()) { window.alert('Voice recording is not supported in this browser.'); return; }
+        if (!_answerRecording) {
+          try { await Chat.startVoice(); _answerRecording = true; voiceBtn.classList.add('recording'); voiceBtn.textContent = '⏺ Stop & Send'; }
+          catch { window.alert('Could not access the microphone. Please allow mic permission.'); }
+        } else {
+          _answerRecording = false; voiceBtn.classList.remove('recording'); voiceBtn.textContent = '🎤 Voice';
+          const blob = await Chat.stopVoice();
+          if (blob && blob.size) {
+            const res = await Chat.sendMedia(blob, { type: 'audio', official: true });
+            if (res && res.success) {
+              await _updateState({ answererSubmitted: true, answererAnswer: '🎤 Voice answer', turnPhase: PHASES.JUDGING });
+            } else if (res && res.error) {
+              window.alert(res.error);
+            }
+          }
+        }
       });
     }
 
