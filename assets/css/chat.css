@@ -365,3 +365,12 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Voice / audio in chat ── */
+.chat-media-audio { display: block; width: 100%; max-width: 240px; height: 38px; }
+.chat-voice-btn.recording {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #ef4444;
+  animation: pulse 1.2s ease-in-out infinite;
+}

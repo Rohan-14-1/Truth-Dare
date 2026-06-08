@@ -299,3 +299,35 @@
 .phase-result .result-emoji {
   font-size: 5rem;
 }
+
+/* ── Answer box: photo / video / voice options ── */
+.answer-media-row {
+  display: flex;
+  gap: var(--sp-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: var(--sp-sm) 0;
+}
+.answer-media-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  color: var(--clr-text-secondary);
+  font-family: var(--ff-body);
+  font-size: var(--fs-sm);
+  padding: var(--sp-sm) var(--sp-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.answer-media-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--clr-text-primary);
+  border-color: var(--clr-border-accent);
+}
+.answer-media-btn:disabled { opacity: 0.6; cursor: default; }
+.answer-media-btn.recording {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #ef4444;
+  animation: pulse 1.2s ease-in-out infinite;
+}
