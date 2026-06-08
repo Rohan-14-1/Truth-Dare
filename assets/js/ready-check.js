@@ -74,11 +74,11 @@ const ReadyCheck = (() => {
     const countEl = document.getElementById('ready-count-display');
     if (countEl) countEl.textContent = `${readyCount}/${total} Ready`;
 
-    // Enable start button only if all are ready AND user is host
-    const startBtn = document.getElementById('btn-start-from-lobby');
-    if (startBtn && Rooms.getIsHost()) {
-      startBtn.disabled = readyCount < total || total < 2;
-    }
+    // NOTE: Ready status is INFORMATIONAL ONLY — it shows the badges and count but
+    // must NOT gate the Start button. The host has no "Ready" button, so requiring
+    // everyone (including the host) to be ready deadlocked the game and Start stayed
+    // disabled forever. The host can start once there are 2+ players; that button's
+    // enabled/disabled state is managed in multiplayer-ui.js.
   }
 
   function _detach() {
