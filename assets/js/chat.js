@@ -54,6 +54,11 @@ const Chat = (() => {
     _chatRef.limitToLast(100).on('child_added', snap => {
       const msg = snap.val();
       if (msg) _deliver({ ...msg, id: snap.key });
+    }, err => {
+      // Most commonly PERMISSION_DENIED — means the Realtime Database rules were
+      // not published (or test mode expired). Chat reads are being blocked.
+      console.error('[Chat] ❌ Cannot READ messages from Firebase — likely your ' +
+        'database rules are not published. Error:', err && err.message ? err.message : err);
     });
     console.log('[Chat] Firebase listener attached to rooms/' + _roomCode + '/chat');
   }
@@ -91,7 +96,17 @@ const Chat = (() => {
     };
 
     if (!_isLocal && _chatRef) {
-      try { await _chatRef.push(msg); return; } catch { /* fall through */ }
+      try {
+        await _chatRef.push(msg);
+        return;
+      } catch (err) {
+        // In Firebase mode, do NOT silently fall back to a local-only render — that
+        // would make the sender think it worked while no one else receives it.
+        // Surface the real cause (almost always PERMISSION_DENIED = rules not published).
+        console.error('[Chat] ❌ Cannot SEND message to Firebase — likely your ' +
+          'database rules are not published. Error:', err && err.message ? err.message : err);
+        return;
+      }
     }
     _appendLocal(msg);
     _deliver(msg);
