@@ -326,3 +326,46 @@
   .game-main, .phase-picking, .phase-choosing, .phase-questioning,
   .phase-displaying, .phase-result { max-width: 100%; }
 }
+
+/* ============================================================
+   MOBILE — multiplayer room screens (waiting lobby + modals)
+   These render with inline styles, so we override with !important.
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Host's waiting-lobby grid (Players + Host Controls) stacks vertically */
+  .waiting-grid {
+    grid-template-columns: 1fr !important;
+    max-width: 100% !important;
+    gap: 14px !important;
+  }
+  .host-controls-card { align-self: stretch !important; }
+
+  /* Waiting-lobby header & room code */
+  .waiting-lobby-header .lobby-title-new { font-size: 2rem !important; }
+  .waiting-room-code { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
+  .waiting-code-value { font-size: 1.1rem; letter-spacing: 2px; word-break: break-all; }
+
+  /* Waiting-lobby action buttons full width (class also = lobby-actions) */
+  .waiting-lobby-actions { flex-direction: column; }
+  .waiting-lobby-actions .btn { width: 100%; }
+
+  /* Player tiles: 2 across on phones, comfortable tap size */
+  .waiting-player-list { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Create / Join modals fit the screen */
+  .modal-content {
+    width: 94vw !important;
+    max-width: 460px !important;
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .modal-action-btn { width: 100%; }
+
+  /* Room-select entry buttons stack */
+  .room-select-buttons { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 420px) {
+  .waiting-player-list { grid-template-columns: 1fr !important; }
+  .waiting-lobby-header .lobby-title-new { font-size: 1.7rem !important; }
+}
