@@ -342,6 +342,19 @@
   margin-bottom: var(--sp-xl);
 }
 
+.waiting-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-lg);
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.waiting-grid.has-host {
+  grid-template-columns: 1fr 260px;
+  align-items: start;
+}
+
 .waiting-player-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -723,6 +736,14 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
+  /* Host's waiting-lobby grid must stack on phones (was overflowing side-by-side) */
+  .waiting-grid,
+  .waiting-grid.has-host {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+  .waiting-grid .host-controls-card { align-self: stretch; }
+
   .room-select-buttons {
     grid-template-columns: 1fr;
   }

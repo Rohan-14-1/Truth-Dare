@@ -323,7 +323,7 @@ const MultiplayerUI = (() => {
         </div>
       </header>
 
-      <div class="waiting-grid" style="display:grid;grid-template-columns:1fr ${isHost ? '260px' : ''};gap:var(--sp-lg);width:100%;max-width:760px">
+      <div class="waiting-grid${isHost ? ' has-host' : ''}">
         <div class="card waiting-card">
           <div class="lobby-card-header" style="display:flex;align-items:center;justify-content:space-between">
             <h4>👥 Players (<span id="player-count">0</span>/10)</h4>
