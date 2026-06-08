@@ -1171,3 +1171,71 @@
     gap: var(--sp-md);
   }
 }
+
+/* ============================================
+   CREATOR CREDITS (lobby footer)
+   ============================================ */
+.creator-credits {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-md);
+  margin-top: var(--sp-lg);
+  padding-bottom: var(--sp-xl);
+}
+
+.creator-credits-label {
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  letter-spacing: 0.02em;
+}
+.creator-credits-label strong {
+  color: var(--clr-text-secondary);
+  font-weight: 700;
+}
+
+.creator-social-links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  color: var(--clr-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--clr-border);
+  text-decoration: none;
+  transition: transform var(--transition-fast),
+              color var(--transition-fast),
+              background var(--transition-fast),
+              border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+.social-link:hover {
+  transform: translateY(-3px);
+  color: #fff;
+}
+
+/* Brand-tinted hovers */
+.social-github:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 18px rgba(255, 255, 255, 0.12);
+}
+.social-linkedin:hover {
+  background: rgba(10, 102, 194, 0.18);
+  border-color: rgba(10, 102, 194, 0.6);
+  box-shadow: 0 6px 18px rgba(10, 102, 194, 0.35);
+}
+.social-instagram:hover {
+  background: rgba(225, 48, 108, 0.18);
+  border-color: rgba(225, 48, 108, 0.6);
+  box-shadow: 0 6px 18px rgba(225, 48, 108, 0.35);
+}
